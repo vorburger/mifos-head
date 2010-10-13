@@ -56,6 +56,7 @@ public class UiTestCaseBase extends AbstractTestNGSpringContextTests {
     @SuppressWarnings("PMD.SignatureDeclareThrowsException") // allow for overriding methods to throw Exception
     @BeforeMethod
     public void setUp() throws Exception {
+    	// TODO If this does nothing, is it really needed? What for?
         // do nothing
     }
 
@@ -74,7 +75,7 @@ public class UiTestCaseBase extends AbstractTestNGSpringContextTests {
         this.selenium = selenium;
         synchronized(UiTestCaseBase.class) {
             if (!seleniumServerIsRunning.booleanValue()) {
-                selenium.start();
+                // selenium.start(); TODO remove?
                 seleniumServerIsRunning = Boolean.TRUE;
             }
         }

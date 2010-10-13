@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:context="http://www.springframework.org/schema/context"
     xsi:schemaLocation="http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
-		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
-
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
     <aop:aspectj-autoproxy />
-
+    
+	<!-- enable processing of annotations such as @Autowired and @Configuration -->
+  	<context:annotation-config/>
+  
     <import resource="acceptancePropertyConfigurer.xml"/>
 
     <bean id="seleniumSpeedControl" class="org.mifos.test.acceptance.framework.util.SeleniumSpeedControl" />
 
-    <bean id="selenium" class="com.thoughtworks.selenium.DefaultSelenium" >
-        <constructor-arg type="java.lang.String" value="localhost" />
-        <constructor-arg type="int" value="${selenium.port}" />
-        <constructor-arg type="java.lang.String" value="${selenium.browser.start.command}" />
-        <constructor-arg type="java.lang.String" value="http://localhost:${servlet.port}/mifos/" />
-    </bean>
+	<!-- NOTE: The <bean> for @Configuration *Config classes CANNOT have an id! -->
+    <bean class="org.mifos.test.acceptance.framework.webdriver.SeleniumWebDriverConfig" />
 
     <bean id="databaseTestUtils" class="org.mifos.test.framework.util.DatabaseTestUtils" />
     <bean id="dbUnitUtilities" class="org.mifos.framework.util.DbUnitUtilities" />
