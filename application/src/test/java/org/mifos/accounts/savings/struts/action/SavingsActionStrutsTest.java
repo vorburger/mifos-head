@@ -20,6 +20,7 @@
 
 package org.mifos.accounts.savings.struts.action;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -37,7 +38,6 @@ import org.mifos.accounts.productdefinition.util.helpers.RecommendedAmountUnit;
 import org.mifos.accounts.savings.business.SavingsBO;
 import org.mifos.accounts.savings.business.service.SavingsBusinessService;
 import org.mifos.accounts.savings.persistence.SavingsDao;
-import org.mifos.accounts.savings.persistence.SavingsPersistence;
 import org.mifos.accounts.savings.struts.actionforms.SavingsActionForm;
 import org.mifos.accounts.savings.util.helpers.SavingsConstants;
 import org.mifos.accounts.savings.util.helpers.SavingsTestHelper;
@@ -77,6 +77,12 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.context.SecurityContextImpl;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
 public class SavingsActionStrutsTest extends MifosMockStrutsTestCase {
 
     private UserContext userContext;
@@ -99,7 +105,7 @@ public class SavingsActionStrutsTest extends MifosMockStrutsTestCase {
     private SavingsDao savingsDao;
 
     @Override
-    protected void setStrutsConfig() {
+    protected void setStrutsConfig() throws IOException {
         super.setStrutsConfig();
         setConfigFile("/WEB-INF/struts-config.xml,/WEB-INF/accounts-struts-config.xml");
     }

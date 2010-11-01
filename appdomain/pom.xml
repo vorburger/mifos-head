@@ -335,22 +335,18 @@
         <dependency>
             <groupId>struts</groupId>
             <artifactId>struts</artifactId>
-            <version>1.2.7</version>
         </dependency>
         <dependency>
             <groupId>struts</groupId>
             <artifactId>struts-el</artifactId>
-            <version>1.2.7</version>
         </dependency>
         <dependency>
             <groupId>struts</groupId>
             <artifactId>struts-legacy</artifactId>
-            <version>1.0</version>
         </dependency>
         <dependency>
             <groupId>strutstest</groupId>
             <artifactId>strutstest</artifactId>
-            <version>2.1.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -368,18 +364,6 @@
     </dependencies>
 
     <build>
-        <defaultGoal>jar</defaultGoal>
-        <sourceDirectory>${modules.root.dir}/appdomain/src/main/java</sourceDirectory>
-        <scriptSourceDirectory>${modules.root.dir}/appdomain/src/main/scripts</scriptSourceDirectory>
-        <testSourceDirectory>${modules.root.dir}/appdomain/src/test/java</testSourceDirectory>
-        <outputDirectory>target/classes</outputDirectory>
-        <testOutputDirectory>target/test-classes</testOutputDirectory>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-        </resources>
-
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
