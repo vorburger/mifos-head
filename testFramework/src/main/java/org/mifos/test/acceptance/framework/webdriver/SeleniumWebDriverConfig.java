@@ -42,8 +42,8 @@ public class SeleniumWebDriverConfig {
         int port = 8080; // TODO must get injected from ${servlet.port} - possible with Spring, I'll remember how later
 
         // TODO Make this configurable... Spring injected? Test Configuration System Property?
-        WebDriver baseDriver = new FirefoxDriver();
-        // WebDriver baseDriver = new HtmlUnitDriver(true);
+        // WebDriver baseDriver = new FirefoxDriver();
+        WebDriver baseDriver = new HtmlUnitDriver(true);
 
         String baseUrl = "http://localhost:" + port + "/mifos/";
         WebDriverBackedSelenium selenium = new WebDriverBackedSelenium(baseDriver, baseUrl);
