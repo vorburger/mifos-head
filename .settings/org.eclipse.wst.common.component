@@ -31,5 +31,11 @@
         <wb-resource deploy-path="/" source-path="/userInterface/src/main/webapp/pages"/>
         <wb-resource deploy-path="/" source-path="/application/src/main/webapp/WEB-INF"/>
         <wb-resource deploy-path="/" source-path="/application/src/main/webapp/pages"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/questionnaire/src/main/webapp/WEB-INF"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/questionnaire/src/main/webapp/pages"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/cashflow/src/main/webapp/WEB-INF"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/cashflow/src/main/webapp/pages"/>
+        <property name="context-root" value="mifos"/>
+        <property name="java-output-path" value="/mifos-gazelle/application/target/mifos-webapp/WEB-INF/classes"/>
     </wb-module>
 </project-modules>
