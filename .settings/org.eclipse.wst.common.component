@@ -1,40 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project-modules id="moduleCoreId" project-version="1.5.0">
     <wb-module deploy-name="mifos-gazelle">
-        <wb-resource deploy-path="/" source-path="/acceptanceTests/src/test/java"/>
-        <wb-resource deploy-path="/" source-path="/acceptanceTests/src/test/resources"/>
-<wb-resource deploy-path="/" source-path="/userInterface/src/main/resources"/>
-<wb-resource deploy-path="/" source-path="/userInterface/src/test/java"/>
-<wb-resource deploy-path="/" source-path="/userInterface/src/main/java"/>
-<wb-resource deploy-path="/" source-path="/testFramework/src/test/java"/>
-<wb-resource deploy-path="/" source-path="/testFramework/src/main/resources"/>
-<wb-resource deploy-path="/" source-path="/testFramework/src/main/java"/>
-<wb-resource deploy-path="/" source-path="/serviceInterfaces/src/main/java"/>
-<wb-resource deploy-path="/" source-path="/common/src/main/java"/>
-<wb-resource deploy-path="/" source-path="/common/src/test/java"/>
-<wb-resource deploy-path="/" source-path="/common/src/test/resources"/>
-<wb-resource deploy-path="/" source-path="/application/src/main"/>
-<wb-resource deploy-path="/" source-path="/application/src/main/java"/>
-<wb-resource deploy-path="/" source-path="/application/src/main/resources"/>
-<wb-resource deploy-path="/" source-path="/application/src/test/java"/>
-<wb-resource deploy-path="/" source-path="/application/src/test/resources"/>
-        <wb-resource deploy-path="/" source-path="/spi/src/main/java"/>
-        <wb-resource deploy-path="/" source-path="/api/src/main/java"/>
-        <wb-resource deploy-path="/" source-path="/api/src/test/java"/>
-        <wb-resource deploy-path="/" source-path="/serviceInterfaces/src/test"/>
-        <wb-resource deploy-path="/" source-path="/serviceInterfaces/src/test/java"/>
-        <wb-resource deploy-path="/" source-path="/questionnaire/src/main/java"/>
-        <wb-resource deploy-path="/" source-path="/questionnaire/src/test/java"/>
-        <wb-resource deploy-path="/" source-path="/cashflow/src/test/java"/>
-        <wb-resource deploy-path="/" source-path="/cashflow/src/main/java"/>
-        <wb-resource deploy-path="/" source-path="/userInterface/src/main/webapp/WEB-INF"/>
-        <wb-resource deploy-path="/" source-path="/userInterface/src/main/webapp/pages"/>
-        <wb-resource deploy-path="/" source-path="/application/src/main/webapp/WEB-INF"/>
-        <wb-resource deploy-path="/" source-path="/application/src/main/webapp/pages"/>
-        <wb-resource deploy-path="/WEB-INF/classes" source-path="/questionnaire/src/main/webapp/WEB-INF"/>
-        <wb-resource deploy-path="/WEB-INF/classes" source-path="/questionnaire/src/main/webapp/pages"/>
-        <wb-resource deploy-path="/WEB-INF/classes" source-path="/cashflow/src/main/webapp/WEB-INF"/>
-        <wb-resource deploy-path="/WEB-INF/classes" source-path="/cashflow/src/main/webapp/pages"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/userInterface/src/main/resources"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/userInterface/src/main/java"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/serviceInterfaces/src/main/java"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/common/src/main/java"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/application/src/main/java"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/application/src/main/resources"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/spi/src/main/java"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/questionnaire/src/main/java"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/cashflow/src/main/java"/>
+        <wb-resource deploy-path="/" source-path="/application/src/main/webapp"/>
+        <wb-resource deploy-path="/" source-path="/userInterface/src/main/webapp"/>
+        <wb-resource deploy-path="/" source-path="/cashflow/src/main/webapp"/>
+        <wb-resource deploy-path="/" source-path="/questionnaire/src/main/webapp"/>
         <property name="context-root" value="mifos"/>
         <property name="java-output-path" value="/mifos-gazelle/application/target/mifos-webapp/WEB-INF/classes"/>
     </wb-module>

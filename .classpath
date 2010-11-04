@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="common/src/main/java"/>
-	<classpathentry kind="src" output="application/target/mifos-webapp/WEB-INF" path="questionnaire/src/main/webapp/WEB-INF"/>
-	<classpathentry kind="src" output="application/target/mifos-webapp/pages" path="questionnaire/src/main/webapp/pages"/>
-	<classpathentry kind="src" output="application/target/mifos-webapp/WEB-INF" path="cashflow/src/main/webapp/WEB-INF"/>
-	<classpathentry kind="src" output="application/target/mifos-webapp/pages" path="cashflow/src/main/webapp/pages"/>
-	<classpathentry kind="src" output="application/target/mifos-webapp/WEB-INF" path="userInterface/src/main/webapp/WEB-INF"/>
-	<classpathentry kind="src" output="application/target/mifos-webapp/pages" path="userInterface/src/main/webapp/pages"/>
-	<classpathentry kind="src" output="application/target/mifos-webapp/WEB-INF" path="application/src/main/webapp/WEB-INF"/>
-	<classpathentry kind="src" output="application/target/mifos-webapp/pages" path="application/src/main/webapp/pages"/>
+	<classpathentry kind="src" output="application/target/ECLIPSE/mifos-webapp" path="userInterface/src/main/webapp"/>
+	<classpathentry kind="src" output="application/target/ECLIPSE/mifos-webapp" path="cashflow/src/main/webapp"/>
+	<classpathentry kind="src" output="application/target/ECLIPSE/mifos-webapp" path="questionnaire/src/main/webapp"/>
+	<classpathentry excluding="WEB-INF/" kind="src" output="application/target/ECLIPSE/mifos-webapp" path="application/src/main/webapp"/>
 	<classpathentry kind="src" path="questionnaire/src/main/java"/>
 	<classpathentry kind="src" path="questionnaire/src/test/java"/>
 	<classpathentry kind="src" output="common/target/test-classes" path="common/src/test/resources"/>
@@ -35,8 +31,8 @@
 	<classpathentry kind="src" path="cashflow/src/main/java"/>
 	<classpathentry exported="true" kind="con" path="org.maven.ide.eclipse.MAVEN2_CLASSPATH_CONTAINER">
 		<attributes>
-     		<attribute name="org.eclipse.jst.component.dependency" value="/WEB-INF/lib"/>
-    	</attributes>
+			<attribute name="org.eclipse.jst.component.dependency" value="/WEB-INF/lib"/>
+		</attributes>
 		<accessrules>
 			<accessrule kind="nonaccessible" pattern="org.junit/**"/>
 		</accessrules>
