@@ -19,27 +19,40 @@
  */
 package org.mifos.accounts.loan.business;
 
-import org.mifos.accounts.loan.schedule.domain.Installment;
+import org.mifos.accounts.business.AccountPaymentEntity;
+import org.mifos.accounts.loan.schedule.calculation.ScheduleCalculator;
 import org.mifos.accounts.loan.schedule.domain.Schedule;
-import org.mifos.accounts.productdefinition.util.helpers.InterestType;
-import org.mifos.application.master.business.MifosCurrency;
 import org.mifos.config.AccountingRules;
+import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.framework.util.helpers.Money;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 
 public class ScheduleCalculatorAdaptor {
 
+    private ScheduleCalculator scheduleCalculator;
+    private ScheduleMapper scheduleMapper;
+
+    public ScheduleCalculatorAdaptor(ScheduleCalculator scheduleCalculator, ScheduleMapper scheduleMapper) {
+        this.scheduleCalculator = scheduleCalculator;
+        this.scheduleMapper = scheduleMapper;
+    }
+
+    public void applyPayment(LoanBO loanBO, Money amount, Date paymentDate, PersonnelBO personnel, AccountPaymentEntity accountPaymentEntity) {
+        Schedule schedule = scheduleMapper.mapToSchedule(loanBO.getLoanScheduleEntities(), loanBO.getDisbursementDate(),
+                getDailyInterest(loanBO.getInterestRate()), loanBO.getLoanAmount().getAmount());
+        scheduleCalculator.applyPayment(schedule, amount.getAmount(), paymentDate);
+        scheduleMapper.populatePaymentDetails(schedule, loanBO, paymentDate, personnel, accountPaymentEntity);
+    }
+
     public void computeExtraInterest(LoanBO loan, Date asOfDate) {
-        if (loan.isDecliningPrincipalBalance()) {
-            Schedule schedule = mapToSchedule(new ArrayList<LoanScheduleEntity>(loan.getLoanScheduleEntities()),
+        if (loan.isDecliningBalanceInterestRecalculation()) {
+            Schedule schedule = scheduleMapper.mapToSchedule(new ArrayList<LoanScheduleEntity>(loan.getLoanScheduleEntities()),
                     loan.getDisbursementDate(), getDailyInterest(loan.getInterestRate()), loan.getLoanAmount().getAmount());
-            schedule.computeExtraInterest(asOfDate);
-            populateExtraInterestInLoanScheduleEntities(schedule, loan.getLoanScheduleEntityMap());
+            scheduleCalculator.computeExtraInterest(schedule, asOfDate);
+            scheduleMapper.populateExtraInterestInLoanScheduleEntities(schedule, loan.getLoanScheduleEntityMap());
         }
     }
 
@@ -47,29 +60,7 @@ public class ScheduleCalculatorAdaptor {
         return annualInterest / (AccountingRules.getNumberOfInterestDays() * 100d);
     }
 
-    Schedule mapToSchedule(List<LoanScheduleEntity> loanScheduleEntities, Date disbursementDate, Double dailyInterestRate, BigDecimal loanAmount) {
-        return new Schedule(disbursementDate, dailyInterestRate, loanAmount, mapToInstallments(loanScheduleEntities));
-    }
-
-    private List<Installment> mapToInstallments(List<LoanScheduleEntity> loanScheduleEntities) {
-        List<Installment> installments = new ArrayList<Installment>();
-        for (LoanScheduleEntity loanScheduleEntity : loanScheduleEntities) {
-            installments.add(mapToInstallment(loanScheduleEntity));
-        }
-        return installments;
-    }
-
-    private Installment mapToInstallment(LoanScheduleEntity loanScheduleEntity) {
-        return new Installment(loanScheduleEntity.getInstallmentId().intValue(),
-                loanScheduleEntity.getActionDate(), loanScheduleEntity.getPrincipal().getAmount(),
-                loanScheduleEntity.getInterest().getAmount(), loanScheduleEntity.getTotalFees().getAmount());
-    }
-
     void populateExtraInterestInLoanScheduleEntities(Schedule schedule, Map<Integer, LoanScheduleEntity> loanScheduleEntities) {
-        for (Installment installment : schedule.getInstallments().values()) {
-            LoanScheduleEntity loanScheduleEntity = loanScheduleEntities.get(installment.getId());
-            MifosCurrency mifosCurrency = loanScheduleEntity.getPrincipal().getCurrency();
-            loanScheduleEntity.setExtraInterest(new Money(mifosCurrency, installment.getExtraInterest()));
-        }
+        scheduleMapper.populateExtraInterestInLoanScheduleEntities(schedule, loanScheduleEntities);
     }
 }

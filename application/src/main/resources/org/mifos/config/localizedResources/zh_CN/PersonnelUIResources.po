@@ -1,9 +1,9 @@
-#. extracted from PersonnelUIResources.properties
+#. extracted from application/src/main/resources/org/mifos/config/localizedResources/PersonnelUIResources.properties
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-08-02 03:47+0800\n"
+"POT-Creation-Date: 2010-11-28 11:25+0530\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -589,7 +589,7 @@ msgstr "请填写必要的附加信息"
 
 #: error.customdatefield
 msgid "Please enter a valid date (format dd/mm/yyyy) in the '{0}' field."
-msgstr ""
+msgstr "请在{0}内填写有效日期（日/月/年)"
 
 #: error.dob
 msgid "Please specify date of birth."

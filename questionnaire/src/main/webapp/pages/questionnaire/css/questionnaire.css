@@ -37,7 +37,7 @@ fieldset.submit {
 
 fieldset label, .form_content li label {
     float: left;
-    width: 12em;
+    width: 25em;
     margin-right: 1em;
     text-align: right;
     word-wrap: break-word;
@@ -135,6 +135,7 @@ li.question_list_table {
     text-align: left;
 }
 .questionList_box {
+	position: relative;
     overflow: auto;
     width: 250px;
     height: 180px;

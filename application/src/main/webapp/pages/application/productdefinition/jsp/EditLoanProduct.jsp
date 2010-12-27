@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -684,16 +684,41 @@ explanation of the license and how it is applied.
 						</tr>
 						<tr class="fontnormal">
 							<td width="30%" align="right" valign="top">
-							<div id="cashFlowThresholdDiv" style="display: none;"><mifos:mifoslabel
-								name="product.cashFlowWarningThreshold"
-								bundle="ProductDefUIResources" isColonRequired="yes" /></div>
+							    <div id="cashFlowThresholdDiv" style="display: none;">
+							        <mifos:mifoslabel name="product.cashFlowThreshold" bundle="ProductDefUIResources" isColonRequired="yes"/>
+							    </div>
 							</td>
 							<td valign="top">
-							<div id="cashFlowThresholdInputDiv" style="display: none;">
-							<mifos:decimalinput
-								styleId="editLoanProduct.input.cashFlowWarningThreshold"
-								property="cashFlowWarningThreshold" /> <mifos:mifoslabel
-								name="product.perc" bundle="ProductDefUIResources" /></div>
+							    <div id="cashFlowThresholdInputDiv" style="display: none;">
+							        <mifos:decimalinput styleId="editLoanProduct.input.cashFlowThreshold" property="cashFlowThreshold"/>
+							        <c:out value="( ${sessionScope.loanproductactionform.minCashFlowThreshold} - ${sessionScope.loanproductactionform.maxCashFlowThreshold} )" />  
+							        <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources"/></div>
+							</td>
+						</tr>
+						<tr class="fontnormal">
+							<td width="30%" align="right" valign="top">
+							    <div id="cashFlowIndebtednessRatioDiv" style="display: none;">
+							        <mifos:mifoslabel name="product.indebtednessRatio" bundle="ProductDefUIResources" isColonRequired="yes"/>
+							    </div>
+							</td>
+							<td valign="top">
+							    <div id="cashFlowIndebtednessRatioInputDiv" style="display: none;">
+							        <mifos:decimalinput styleId="editLoanProduct.input.indebtednessRatio" property="indebtednessRatio"/>
+							        <c:out value="( ${sessionScope.loanproductactionform.minIndebtednessRatio} - ${sessionScope.loanproductactionform.maxIndebtednessRatio} )" />
+							        <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources"/></div>
+							</td>
+						</tr>
+						<tr class="fontnormal">
+							<td width="30%" align="right" valign="top">
+							    <div id="cashFlowRepaymentCapacityDiv" style="display: none;">
+							        <mifos:mifoslabel name="product.repaymentCapacity" bundle="ProductDefUIResources" isColonRequired="yes"/>
+							    </div>
+							</td>
+							<td valign="top">
+							    <div id="cashFlowRepaymentCapacityInputDiv" style="display: none;">
+							        <mifos:decimalinput styleId="editLoanProduct.input.repaymentCapacity" property="repaymentCapacity"/>
+							        <c:out value="( ${sessionScope.loanproductactionform.minRepaymentCapacity} - ${sessionScope.loanproductactionform.maxRepaymentCapacity} )" />
+							        <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources"/></div>
 							</td>
 						</tr>
 

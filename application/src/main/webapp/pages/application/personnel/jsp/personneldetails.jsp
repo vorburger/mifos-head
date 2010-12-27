@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -252,33 +252,6 @@ explanation of the license and how it is applied.
 							name="Personnel.UserName" bundle="PersonnelUIResources"></mifos:mifoslabel>
 						<c:out value="${personnelInformationDto.userName}" /> </span><br>
 						<br>
-						<c:if test="${!empty session:getFromSession(sessionScope.flowManager,requestScope.currentFlowKey,'customFields')}">
-						<c:if test="${!empty personnelInformationDto.customFields}">
-							<mifos:mifoslabel name="Personnel.AdditionalInfo"
-								bundle="PersonnelUIResources"></mifos:mifoslabel>
-							<br>
-						</c:if> <c:forEach var="cfdef"
-							items="${session:getFromSession(sessionScope.flowManager,requestScope.currentFlowKey,'customFields')}">
-							<c:forEach var="cf"
-								items="${personnelInformationDto.customFields}">
-								<c:if test="${cfdef.fieldId==cf.fieldId}">
-									<span class="fontnormal"> <mifos:mifoslabel
-										name="${cfdef.lookUpEntity.entityType}"
-										bundle="PersonnelUIResources"></mifos:mifoslabel>:
-                                        <c:choose>
-                                            <c:when test="${cfdef.fieldType == MasterConstants.CUSTOMFIELD_DATE}">
-                                                <c:out value="${userdatefn:getUserLocaleDate(sessionScope.UserContext.preferredLocale,cf.fieldValue)}" />
-                                            </c:when>
-                                            <c:otherwise>
-                                                <c:out value="${cf.fieldValue}" />
-                                            </c:otherwise>
-                                        </c:choose>
-                                    </span>
-									<br>
-								</c:if>
-							</c:forEach>
-						</c:forEach> <br>
-						</c:if>
 						<span class="fontnormal">
 						<c:set var="questionnaireFor" scope="session" value="${personnelInformationDto.displayName}"/>
                         <c:remove var="urlMap" />

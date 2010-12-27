@@ -133,6 +133,15 @@ public interface CustomerConstants {
 
     String DISBURSEMENT_DATE ="disbursementDate";
     String LOAN_AMOUNT="loanAmount";
+    String INTEREST_RATE="interestRate";
+    String NO_OF_INSTALLMENTS="noOfInstallments";
+    String GRACE_PERIOD_DURATION="gracePeriodDuration";
+    String FUND_NAME="fundName";
+    String INTEREST_DEDUCTED_AT_DISBURSEMENT="interestDeductedAtDisbursement";
+    String BUSINESS_ACTIVITY_ID="businessActivityId";
+    String COLLATERAL_TYPE_ID="collateralTypeId";
+    String COLLATERAL_NOTE="collateralNote";
+    String EXTERNAL_ID="externalId";
     String ACCOUNT_FEES="accountFees";
 
     String STATUS_LIST = "statusList";
@@ -280,4 +289,7 @@ public interface CustomerConstants {
     String QUESTION_GROUPS_LIST = "questionGroups";
     String VARIABLE_INSTALLMENT_ENABLED = "variableInstallmentsEnabled";
     String LOAN_ACCOUNT = "loanAccount";
+
+    String URL_MAP = "urlMap";
+
 }

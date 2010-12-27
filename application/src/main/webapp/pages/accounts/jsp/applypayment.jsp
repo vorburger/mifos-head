@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,7 +118,7 @@ explanation of the license and how it is applied.
 								<c:otherwise>
 								<html-el:text property="amount"
 								styleId="applypayment.input.amount"
-								disabled="true" name="applyPaymentActionForm" />
+								name="applyPaymentActionForm" />
 								</c:otherwise>
 							</c:choose>
 							</td>

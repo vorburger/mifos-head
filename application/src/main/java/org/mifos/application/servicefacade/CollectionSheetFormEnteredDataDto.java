@@ -21,9 +21,9 @@ package org.mifos.application.servicefacade;
 
 import java.util.Date;
 
-import org.mifos.accounts.api.CustomerDto;
-import org.mifos.customers.personnel.business.PersonnelDto;
+import org.mifos.dto.domain.CustomerDto;
 import org.mifos.dto.domain.OfficeDetailsDto;
+import org.mifos.dto.domain.PersonnelDto;
 import org.mifos.customers.api.DataTransferObject;
 
 /**

@@ -20,21 +20,31 @@
 
 package org.mifos.accounts.loan.business.service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
+import org.mifos.accounts.business.AccountActionDateEntity;
 import org.mifos.accounts.business.AccountBO;
+import org.mifos.accounts.business.AccountPaymentEntity;
 import org.mifos.accounts.business.service.AccountBusinessService;
-import org.mifos.accounts.loan.business.LoanActivityEntity;
-import org.mifos.accounts.loan.business.LoanActivityDto;
 import org.mifos.accounts.loan.business.LoanBO;
+import org.mifos.accounts.loan.business.LoanScheduleEntity;
+import org.mifos.accounts.loan.business.OriginalLoanScheduleEntity;
+import org.mifos.accounts.loan.business.ScheduleCalculatorAdaptor;
 import org.mifos.accounts.loan.persistance.LoanDao;
 import org.mifos.accounts.loan.persistance.LoanPersistence;
 import org.mifos.accounts.loan.util.helpers.RepaymentScheduleInstallment;
 import org.mifos.accounts.util.helpers.AccountExceptionConstants;
-import org.mifos.application.holiday.util.helpers.HolidayUtils;
+import org.mifos.accounts.util.helpers.PaymentData;
+import org.mifos.application.holiday.business.service.HolidayService;
+import org.mifos.application.servicefacade.DependencyInjectedServiceLocator;
 import org.mifos.config.AccountingRules;
 import org.mifos.config.business.service.ConfigurationBusinessService;
 import org.mifos.customers.business.CustomerBO;
+import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.business.service.BusinessService;
 import org.mifos.framework.exceptions.PersistenceException;
@@ -48,16 +58,15 @@ public class LoanBusinessService implements BusinessService {
     private LoanPersistence loanPersistence;
     private ConfigurationBusinessService configService;
     private AccountBusinessService accountBusinessService;
+    private HolidayService holidayService;
+    private ScheduleCalculatorAdaptor scheduleCalculatorAdaptor;
+
 
     public LoanPersistence getLoanPersistence() {
         if (loanPersistence == null) {
             loanPersistence = new LoanPersistence();
         }
         return loanPersistence;
-    }
-
-    public void setLoanPersistence(final LoanPersistence loanPersistence) {
-        this.loanPersistence = loanPersistence;
     }
 
     public ConfigurationBusinessService getConfigService() {
@@ -67,10 +76,6 @@ public class LoanBusinessService implements BusinessService {
         return configService;
     }
 
-    public void setConfigService(final ConfigurationBusinessService configService) {
-        this.configService = configService;
-    }
-
     public AccountBusinessService getAccountBusinessService() {
         if (accountBusinessService == null) {
             accountBusinessService = new AccountBusinessService();
@@ -78,19 +83,23 @@ public class LoanBusinessService implements BusinessService {
         return accountBusinessService;
     }
 
-    public void setAccountBusinessService(final AccountBusinessService accountBusinessService) {
-        this.accountBusinessService = accountBusinessService;
-    }
-
+    /**
+     * Use {@link org.mifos.application.servicefacade.DependencyInjectedServiceLocator} to create instances of this service.
+     * Does not instantiate HolidayService & ScheduleCalculatorAdaptor.
+     */
+    @Deprecated
     public LoanBusinessService() {
-        this(new LoanPersistence(), new ConfigurationBusinessService(), new AccountBusinessService());
+        this(new LoanPersistence(), new ConfigurationBusinessService(), new AccountBusinessService(), DependencyInjectedServiceLocator.locateHolidayService(), null);
     }
 
-    LoanBusinessService(final LoanPersistence loanPersistence, final ConfigurationBusinessService configService,
-            final AccountBusinessService accountBusinessService) {
-        this.setLoanPersistence(loanPersistence);
-        this.setConfigService(configService);
-        this.setAccountBusinessService(accountBusinessService);
+    public LoanBusinessService(LoanPersistence loanPersistence, ConfigurationBusinessService configService,
+                               AccountBusinessService accountBusinessService, HolidayService holidayService,
+                               ScheduleCalculatorAdaptor scheduleCalculatorAdaptor) {
+        this.loanPersistence = loanPersistence;
+        this.configService = configService;
+        this.accountBusinessService = accountBusinessService;
+        this.holidayService = holidayService;
+        this.scheduleCalculatorAdaptor = scheduleCalculatorAdaptor;
     }
 
     @Override
@@ -111,6 +120,10 @@ public class LoanBusinessService implements BusinessService {
         }
     }
 
+    /**
+     * use loanDao implementation
+     */
+    @Deprecated
     public List<LoanBO> findIndividualLoans(final String accountId) throws ServiceException {
         try {
             return getLoanPersistence().findIndividualLoans(accountId);
@@ -118,62 +131,6 @@ public class LoanBusinessService implements BusinessService {
             throw new ServiceException(AccountExceptionConstants.FINDBYGLOBALACCNTEXCEPTION, e,
                     new Object[] { accountId });
         }
-    }
-
-    public List<LoanActivityDto> getRecentActivityView(final String globalAccountNumber) throws ServiceException {
-        LoanBO loanBO = findBySystemId(globalAccountNumber);
-        List<LoanActivityEntity> loanAccountActivityDetails = loanBO.getLoanActivityDetails();
-        List<LoanActivityDto> recentActivityView = new ArrayList<LoanActivityDto>();
-
-        int count = 0;
-        for (LoanActivityEntity loanActivity : loanAccountActivityDetails) {
-            recentActivityView.add(getLoanActivityView(loanActivity));
-            if (++count == 3) {
-                break;
-            }
-        }
-        return recentActivityView;
-    }
-
-    /**
-     */
-    @Deprecated
-    public List<LoanActivityDto> getAllActivityView(final String globalAccountNumber) throws ServiceException {
-        LoanBO loanBO = findBySystemId(globalAccountNumber);
-        List<LoanActivityEntity> loanAccountActivityDetails = loanBO.getLoanActivityDetails();
-        List<LoanActivityDto> loanActivityViewSet = new ArrayList<LoanActivityDto>();
-        for (LoanActivityEntity loanActivity : loanAccountActivityDetails) {
-            loanActivityViewSet.add(getLoanActivityView(loanActivity));
-        }
-        return loanActivityViewSet;
-    }
-
-    private LoanActivityDto getLoanActivityView(final LoanActivityEntity loanActivity) {
-        LoanActivityDto loanActivityDto = new LoanActivityDto(loanActivity.getAccount().getCurrency());
-        loanActivityDto.setId(loanActivity.getAccount().getAccountId());
-        loanActivityDto.setActionDate(loanActivity.getTrxnCreatedDate());
-        loanActivityDto.setActivity(loanActivity.getComments());
-        loanActivityDto.setPrincipal(removeSign(loanActivity.getPrincipal()));
-        loanActivityDto.setInterest(removeSign(loanActivity.getInterest()));
-        loanActivityDto.setPenalty(removeSign(loanActivity.getPenalty()));
-        loanActivityDto.setFees(removeSign(loanActivity.getFee()));
-        loanActivityDto.setTotal(removeSign(loanActivity.getFee()).add(removeSign(loanActivity.getPenalty())).add(
-                removeSign(loanActivity.getPrincipal())).add(removeSign(loanActivity.getInterest())));
-        loanActivityDto.setTimeStamp(loanActivity.getTrxnCreatedDate());
-        loanActivityDto.setRunningBalanceInterest(loanActivity.getInterestOutstanding());
-        loanActivityDto.setRunningBalancePrinciple(loanActivity.getPrincipalOutstanding());
-        loanActivityDto.setRunningBalanceFees(loanActivity.getFeeOutstanding());
-        loanActivityDto.setRunningBalancePenalty(loanActivity.getPenaltyOutstanding());
-
-        return loanActivityDto;
-    }
-
-    private Money removeSign(final Money amount) {
-        if (amount != null && amount.isLessThanZero()) {
-            return amount.negate();
-        }
-
-        return amount;
     }
 
     /**
@@ -255,25 +212,17 @@ public class LoanBusinessService implements BusinessService {
         return clients;
     }
 
-    public List<RepaymentScheduleInstallment> computeInstallmentScheduleUsingDailyInterest(
-            LoanScheduleGenerationDto loanScheduleGenerationDto, Locale locale) {
+    public List<RepaymentScheduleInstallment> applyDailyInterestRatesWhereApplicable(LoanScheduleGenerationDto loanScheduleGenerationDto, Locale locale) {
         LoanBO loanBO = loanScheduleGenerationDto.getLoanBO();
         List<RepaymentScheduleInstallment> installments = loanBO.toRepaymentScheduleDto(locale);
-        return computeInstallmentScheduleUsingDailyInterest(loanScheduleGenerationDto, installments);
+        return applyDailyInterestRatesWhereApplicable(loanScheduleGenerationDto, installments);
     }
 
-    public List<RepaymentScheduleInstallment> computeInstallmentScheduleUsingDailyInterest(
-            LoanScheduleGenerationDto loanScheduleGenerationDto, List<RepaymentScheduleInstallment> installments) {
-        LoanBO loanBO = loanScheduleGenerationDto.getLoanBO();
-        if (loanScheduleGenerationDto.isVariableInstallmentsAllowed() || loanBO.isDecliningPrincipalBalance()) {
-            loanScheduleGenerationDto.setInstallments(installments);
-            generateInstallmentSchedule(loanScheduleGenerationDto);
-            loanBO.copyInstallmentSchedule(installments);
-        }
-        return installments;
+    private boolean dailyInterestRatesApplicable(LoanScheduleGenerationDto loanScheduleGenerationDto, LoanBO loanBO) {
+        return loanScheduleGenerationDto.isVariableInstallmentsAllowed() || loanBO.isDecliningBalanceInterestRecalculation();
     }
 
-    public void generateInstallmentSchedule(LoanScheduleGenerationDto loanScheduleGenerationDto) {
+    public void applyDailyInterestRates(LoanScheduleGenerationDto loanScheduleGenerationDto) {
         Double dailyInterestFactor = loanScheduleGenerationDto.getInterestRate() / (AccountingRules.getNumberOfInterestDays() * 100d);
         Money principalOutstanding = loanScheduleGenerationDto.getLoanAmountValue();
         Money runningPrincipal = new Money(loanScheduleGenerationDto.getLoanAmountValue().getCurrency());
@@ -310,16 +259,60 @@ public class LoanBusinessService implements BusinessService {
     }
 
     public void adjustInstallmentGapsPostDisbursal(List<RepaymentScheduleInstallment> installments,
-                                                     Date oldDisbursementDate, Date newDisbursementDate) {
+                                                   Date oldDisbursementDate, Date newDisbursementDate, Short officeId) {
         Date oldPrevDate = oldDisbursementDate, newPrevDate = newDisbursementDate;
         for (RepaymentScheduleInstallment installment : installments) {
             Date currentDueDate = installment.getDueDateValue();
             long delta = DateUtils.getNumberOfDaysBetweenTwoDates(currentDueDate, oldPrevDate);
             Date newDueDate = DateUtils.addDays(newPrevDate, (int) delta);
-            installment.setDueDateValue(HolidayUtils.getNextWorkingDay(newDueDate));
+            installment.setDueDateValue(holidayService.getNextWorkingDay(newDueDate, officeId));
             oldPrevDate = currentDueDate;
             newPrevDate = installment.getDueDateValue();
         }
     }
 
+    public void adjustDatesForVariableInstallments(boolean variableInstallmentsAllowed, List<RepaymentScheduleInstallment> originalInstallments,
+                                                   Date oldDisbursementDate, Date newDisbursementDate, Short officeId) {
+        if (variableInstallmentsAllowed) {
+            adjustInstallmentGapsPostDisbursal(originalInstallments, oldDisbursementDate, newDisbursementDate, officeId);
+        }
+    }
+
+
+    public List<RepaymentScheduleInstallment> applyDailyInterestRatesWhereApplicable(
+            LoanScheduleGenerationDto loanScheduleGenerationDto, List<RepaymentScheduleInstallment> installments) {
+        LoanBO loanBO = loanScheduleGenerationDto.getLoanBO();
+        if (dailyInterestRatesApplicable(loanScheduleGenerationDto, loanBO)) {
+            loanScheduleGenerationDto.setInstallments(installments);
+            applyDailyInterestRates(loanScheduleGenerationDto);
+            loanBO.copyInstallmentSchedule(installments);
+        }
+        return installments;
+    }
+
+    public void applyPayment(PaymentData paymentData, LoanBO loanBO, AccountPaymentEntity accountPaymentEntity) {
+        Money balance = paymentData.getTotalAmount();
+        PersonnelBO personnel = paymentData.getPersonnel();
+        Date transactionDate = paymentData.getTransactionDate();
+        if (loanBO.isDecliningBalanceInterestRecalculation()) {
+            scheduleCalculatorAdaptor.applyPayment(loanBO, balance, transactionDate, personnel, accountPaymentEntity);
+        } else {
+            for (AccountActionDateEntity accountActionDate : loanBO.getAccountActionDatesSortedByInstallmentId()) {
+                balance = ((LoanScheduleEntity) accountActionDate).applyPayment(accountPaymentEntity, balance, personnel, transactionDate);
+            }
+        }
+    }
+
+    public void persistOriginalSchedule(LoanBO loan) throws PersistenceException {
+        Collection<LoanScheduleEntity> loanScheduleEntities = loan.getLoanScheduleEntities();
+        Collection<OriginalLoanScheduleEntity> originalLoanScheduleEntities = new ArrayList<OriginalLoanScheduleEntity>();
+        for (LoanScheduleEntity loanScheduleEntity : loanScheduleEntities) {
+                   originalLoanScheduleEntities.add(new OriginalLoanScheduleEntity(loanScheduleEntity));
+        }
+        loanPersistence.saveOriginalSchedule(originalLoanScheduleEntities);
+    }
+
+    public List<OriginalLoanScheduleEntity> retrieveOriginalLoanSchedule(Integer accountId) throws PersistenceException {
+        return loanPersistence.getOriginalLoanScheduleEntity(accountId);
+    }
 }

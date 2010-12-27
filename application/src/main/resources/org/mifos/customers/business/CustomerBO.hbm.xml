@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding='UTF-8'?>
 <!DOCTYPE hibernate-mapping PUBLIC
                             "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
                             "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd" >
@@ -178,11 +179,11 @@
 		id,officeid,customerlevelid
 	-->
 	<query name="Customer.getParentCustomersForLoanOfficer">
-		<![CDATA[select new org.mifos.accounts.api.CustomerDto(customer.customerId,customer.displayName,customer.customerLevel.id,customer.searchId) from  org.mifos.customers.business.CustomerBO customer where customer.personnel.personnelId=:personnelId and 
+		<![CDATA[select new org.mifos.dto.domain.CustomerDto(customer.customerId,customer.displayName,customer.customerLevel.id,customer.searchId) from  org.mifos.customers.business.CustomerBO customer where customer.personnel.personnelId=:personnelId and 
 	        	   		customer.office.officeId=:officeId and customer.customerLevel.id=:customerLevelId and customer.customerStatus.id in (13,9,10) order by customer.displayName ]]>
 	</query>
 	<query name="Customer.getActiveChildrenForParent"><![CDATA[
-		select new org.mifos.accounts.api.CustomerDto(
+		select new org.mifos.dto.domain.CustomerDto(
 			customer.customerId,customer.displayName,
 			customer.parentCustomer.customerId,customer.customerLevel.id) 
 		from org.mifos.customers.business.CustomerBO as customer 
@@ -201,7 +202,7 @@
 		]]>
 	</query>
 	<query name="Customer.getListOfClientsUnderGroupOtherThanClosedAndCancelled">
-		<![CDATA[select new org.mifos.customers.util.helpers.CustomerDetailDto(customer.customerId, 
+		<![CDATA[select new org.mifos.dto.domain.CustomerDetailDto(customer.customerId, 
 		customer.displayName, customer.searchId, customer.globalCustNum)
 		from org.mifos.customers.business.CustomerBO as customer 
 		where customer.searchId like :SEARCH_STRING and 
@@ -210,7 +211,7 @@
 			customer.customerStatus.id not in (5,6) ]]>
 	</query>
 	<query name="Customer.getListOfGroupsUnderCenterOtherThanClosedAndCancelled">
-		<![CDATA[select new org.mifos.customers.util.helpers.CustomerDetailDto(customer.customerId, 
+		<![CDATA[select new org.mifos.dto.domain.CustomerDetailDto(customer.customerId, 
 		customer.displayName, customer.searchId, customer.globalCustNum)
 		from org.mifos.customers.business.CustomerBO as customer 
 		where customer.searchId like :SEARCH_STRING and 
@@ -761,6 +762,10 @@
 	<query name="customer.viewallclosedaccounts">
 		<![CDATA[from org.mifos.accounts.business.AccountBO account where account.customer.customerId=:customerId
 					and account.accountType.accountTypeId=:accountTypeId and account.accountState.id in(6,7,8,10,15,17) ]]>
+	</query>
+    <query name="customer.viewallclosedloanandsavingsaccounts">
+		<![CDATA[from org.mifos.accounts.business.AccountBO account where account.customer.customerId=:customerId
+					and account.accountType.accountTypeId in (1, 2) and account.accountState.id in (6,7,8,10,15,17) ]]>
 	</query>
 	<query name="Customer.getActiveCustomersForLO">
 	        	   <![CDATA[select count(*) from org.mifos.customers.business.CustomerBO as customer where customer.personnel.personnelId=:userId and customer.office.officeId=:officeId and customer.customerStatus.id not in (5,6,11,12,14) ]]>

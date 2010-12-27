@@ -20,10 +20,19 @@
 
 package org.mifos.customers.business;
 
-import org.mifos.customers.client.business.ClientNameDetailEntity;
+import static org.apache.commons.lang.math.NumberUtils.SHORT_ZERO;
+import static org.mifos.framework.util.helpers.MoneyUtils.zero;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.joda.time.DateTime;
 import org.mifos.accounts.business.AccountBO;
 import org.mifos.accounts.exceptions.AccountException;
@@ -35,15 +44,14 @@ import org.mifos.accounts.savings.business.SavingsBO;
 import org.mifos.accounts.util.helpers.AccountState;
 import org.mifos.accounts.util.helpers.AccountTypes;
 import org.mifos.application.admin.servicefacade.InvalidDateException;
-import org.mifos.application.master.business.CustomFieldDefinitionEntity;
-import org.mifos.application.master.business.CustomFieldType;
 import org.mifos.application.master.business.MifosCurrency;
 import org.mifos.application.meeting.business.MeetingBO;
-import org.mifos.application.servicefacade.CenterUpdate;
 import org.mifos.application.servicefacade.DependencyInjectedServiceLocator;
 import org.mifos.application.util.helpers.YesNoFlag;
 import org.mifos.calendar.CalendarUtils;
+import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.client.business.ClientBO;
+import org.mifos.customers.client.business.ClientNameDetailEntity;
 import org.mifos.customers.client.business.ClientPerformanceHistoryEntity;
 import org.mifos.customers.client.util.helpers.ClientConstants;
 import org.mifos.customers.exceptions.CustomerException;
@@ -57,10 +65,11 @@ import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.personnel.persistence.PersonnelPersistence;
 import org.mifos.customers.util.helpers.ChildrenStateType;
 import org.mifos.customers.util.helpers.CustomerConstants;
-import org.mifos.customers.util.helpers.CustomerDetailDto;
-import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.util.helpers.CustomerStatus;
+import org.mifos.dto.domain.AddressDto;
+import org.mifos.dto.domain.CenterUpdate;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.CustomerDetailDto;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.business.util.Address;
 import org.mifos.framework.exceptions.ApplicationException;
@@ -69,23 +78,10 @@ import org.mifos.framework.exceptions.SystemException;
 import org.mifos.framework.util.DateTimeService;
 import org.mifos.framework.util.helpers.ChapterNum;
 import org.mifos.framework.util.helpers.Constants;
-import org.mifos.framework.util.helpers.DateUtils;
 import org.mifos.framework.util.helpers.Money;
 import org.mifos.security.util.UserContext;
-
-import java.math.BigDecimal;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.apache.commons.lang.math.NumberUtils.SHORT_ZERO;
-import static org.mifos.framework.util.helpers.MoneyUtils.zero;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A class that represents a customer entity after being created.
@@ -136,34 +132,6 @@ public abstract class CustomerBO extends AbstractBusinessObject {
     protected CustomerBO() {
         this(null, null, null, null, null);
         this.globalCustNum = null;
-    }
-
-    /**
-     * @deprecated - use minimal legal constructor or static factory methods of subclasses in builder
-     */
-    @Deprecated
-    public CustomerBO(final CustomerLevel customerLevel, final CustomerStatus customerStatus, final String name,
-            final OfficeBO office, final PersonnelBO loanOfficer, final CustomerMeetingEntity customerMeeting,
-            final CustomerBO parentCustomer) {
-        super();
-		this.nameDetailSet = new HashSet<ClientNameDetailEntity>();
-        this.customerId = null;
-        this.displayName = name;
-        this.office = office;
-        this.personnel = loanOfficer;
-        this.customerMeeting = customerMeeting;
-        this.customerMeeting.setCustomer(this);
-        this.parentCustomer = parentCustomer;
-
-        this.accounts = new HashSet<AccountBO>();
-        this.customerLevel = new CustomerLevelEntity(customerLevel);
-        this.customerStatus = new CustomerStatusEntity(customerStatus);
-        this.formedByPersonnel = null;
-
-        this.customerNotes = new HashSet<CustomerNoteEntity>();
-        this.customerFlags = new HashSet<CustomerFlagDetailEntity>();
-        this.userContext = new UserContext();
-        this.userContext.setBranchGlobalNum(office.getGlobalOfficeNum());
     }
 
     /**
@@ -626,8 +594,8 @@ public abstract class CustomerBO extends AbstractBusinessObject {
         }
     }
 
-    public void adjustPmnt(final String adjustmentComment) throws ApplicationException, SystemException {
-        getCustomerAccount().adjustPmnt(adjustmentComment);
+    public void adjustPmnt(final String adjustmentComment, final PersonnelBO loggedInUser) throws ApplicationException, SystemException {
+        getCustomerAccount().adjustPmnt(adjustmentComment, loggedInUser);
     }
 
     public abstract boolean isActive();
@@ -858,30 +826,6 @@ public abstract class CustomerBO extends AbstractBusinessObject {
         return !isSameBranch(otherOffice);
     }
 
-    public void updateCustomFields(final List<CustomFieldDto> customFields) throws CustomerException {
-
-        try {
-            if (customFields != null) {
-                for (CustomFieldDto fieldView : customFields) {
-                    if (CustomFieldType.fromInt(fieldView.getFieldType()).equals(CustomFieldType.DATE)
-                            && StringUtils.isNotBlank(fieldView.getFieldValue())) {
-                        SimpleDateFormat format = (SimpleDateFormat) DateFormat.getDateInstance(DateFormat.SHORT, getUserContext().getPreferredLocale());
-                        String databaseFormat = DateUtils.convertToCurrentDateFormat(format.toPattern());
-                        fieldView.setFieldValue(DateUtils.convertUserToDbFmt(fieldView.getFieldValue(), databaseFormat));
-                    }
-
-                    for (CustomerCustomFieldEntity fieldEntity : getCustomFields()) {
-                        if (fieldView.getFieldId().equals(fieldEntity.getFieldId())) {
-                            fieldEntity.setFieldValue(fieldView.getFieldValue());
-                        }
-                    }
-                }
-            }
-        } catch (InvalidDateException e) {
-            throw new CustomerException(CustomerConstants.ERRORS_CUSTOM_DATE_FIELD, e);
-        }
-    }
-
     public void checkIfClientIsATitleHolder() throws CustomerException {
         if (getParentCustomer() != null) {
             for (CustomerPositionEntity position : getParentCustomer().getCustomerPositions()) {
@@ -938,8 +882,7 @@ public abstract class CustomerBO extends AbstractBusinessObject {
 
         currentCustomerMovement.makeInactive(userContext.getId());
         this.setOffice(officeToTransfer);
-        CustomerMovementEntity newCustomerMovement = new CustomerMovementEntity(this, new DateTimeService()
-                .getCurrentJavaDateTime());
+        CustomerMovementEntity newCustomerMovement = new CustomerMovementEntity(this, new DateTimeService().getCurrentJavaDateTime());
         this.addCustomerMovement(newCustomerMovement);
     }
 
@@ -1287,8 +1230,13 @@ public abstract class CustomerBO extends AbstractBusinessObject {
             address = this.customerAddressDetail.getAddress();
         }
 
+        AddressDto addressDto = null;
+        if (address != null) {
+            Address.toDto(address);
+        }
+
         return new CustomerDetailDto(this.customerId, this.displayName, this.searchId, this.globalCustNum,
-                loanOfficerId, this.externalId, address);
+                loanOfficerId, this.externalId, addressDto);
     }
 
     public boolean hasSameIdentityAs(CustomerBO customer) {
@@ -1309,52 +1257,16 @@ public abstract class CustomerBO extends AbstractBusinessObject {
         return !this.displayName.equalsIgnoreCase(nameToCheck);
     }
 
-    public void validateMandatoryCustomFields(List<CustomFieldDefinitionEntity> allCustomFieldsApplicable)
-            throws CustomerException {
-
-        for (CustomFieldDefinitionEntity customFieldDefinition : allCustomFieldsApplicable) {
-
-            if (customFieldDefinition.isMandatory()) {
-
-                CustomerCustomFieldEntity centerCustomField = findMandatoryCustomFieldOrFail(this.getCustomFields(),
-                        customFieldDefinition);
-
-                if (StringUtils.isBlank(centerCustomField.getFieldValue())) {
-                    throw new CustomerException(CustomerConstants.ERRORS_SPECIFY_CUSTOM_FIELD_VALUE);
-                }
-
-                if (CustomFieldType.DATE.equals(customFieldDefinition.getFieldTypeAsEnum())) {
-                    try {
-                        // is set as database format coming in...
-                        String userFormattedDate = DateUtils.convertDbToUserFmt(centerCustomField.getFieldValue(), "dd/MM/yyyy");
-                        DateUtils.getDate(userFormattedDate);
-                    } catch (Exception e) {
-                        throw new CustomerException(CustomerConstants.ERRORS_CUSTOM_DATE_FIELD, e);
-                    }
-                }
-            }
-        }
-    }
-
-    private CustomerCustomFieldEntity findMandatoryCustomFieldOrFail(Set<CustomerCustomFieldEntity> customFields,
-            CustomFieldDefinitionEntity customFieldDefinition) throws CustomerException {
-
-        for (CustomerCustomFieldEntity centerCustomField : customFields) {
-
-            if (customFieldDefinition.getFieldId().equals(centerCustomField.getFieldId())) {
-                return centerCustomField;
-            }
-        }
-
-        throw new CustomerException(CustomerConstants.ERRORS_SPECIFY_CUSTOM_FIELD_VALUE);
-    }
-
     public void updateCenterDetails(UserContext userContext, CenterUpdate centerUpdate) throws CustomerException {
         this.setUserContext(userContext);
         this.setUpdateDetails();
 
         this.setExternalId(centerUpdate.getExternalId());
-        this.updateAddress(centerUpdate.getAddress());
+        AddressDto dto = centerUpdate.getAddress();
+        if ( dto != null) {
+            Address address = new Address(dto.getLine1(), dto.getLine2(), dto.getLine3(), dto.getCity(), dto.getState(), dto.getCountry(), dto.getZip(), dto.getPhoneNumber());
+            this.updateAddress(address);
+        }
 
         try {
             if (centerUpdate.getMfiJoiningDate() != null) {
@@ -1368,7 +1280,7 @@ public abstract class CustomerBO extends AbstractBusinessObject {
     }
 
     public Short getOfficeId() {
-        return getOffice().getOfficeId();
+        return office.getOfficeId();
     }
 
     public final void addChild(final CustomerBO existingClient) {

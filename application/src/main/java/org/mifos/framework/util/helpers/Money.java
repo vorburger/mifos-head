@@ -69,6 +69,7 @@ public final class Money implements Serializable, Comparable<Money> {
      * This creates a Money object with currency set to MFICurrency and amount
      * set to zero.
      */
+
     public Money(MifosCurrency currency) {
         this(currency, new BigDecimal(0));
     }
@@ -240,8 +241,12 @@ public final class Money implements Serializable, Comparable<Money> {
 
     @Override
     public String toString() {
-        return toString(AccountingRules.getDigitsAfterDecimal(getCurrency()));
+        return toString(getDigitsAfterDecimal());
 
+    }
+
+    Short getDigitsAfterDecimal() {
+        return AccountingRules.getDigitsAfterDecimal(getCurrency());
     }
 
     public String toString(Short digitsAfterDecimal) {
@@ -331,5 +336,10 @@ public final class Money implements Serializable, Comparable<Money> {
 
     public static Money zero(MifosCurrency currency) {
         return new Money(currency, "0");
+    }
+
+    public boolean isTinyAmount() {
+        double delta = 9 * Math.pow(10, -(getDigitsAfterDecimal() + Short.valueOf("1")));
+        return Math.abs(this.getAmount().doubleValue()) <= delta;
     }
 }

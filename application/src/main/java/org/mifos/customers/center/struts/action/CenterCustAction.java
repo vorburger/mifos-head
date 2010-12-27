@@ -20,30 +20,49 @@
 
 package org.mifos.customers.center.struts.action;
 
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.METHODCALLED;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.struts.action.ActionErrors;
 import org.apache.struts.action.ActionForm;
 import org.apache.struts.action.ActionForward;
 import org.apache.struts.action.ActionMapping;
 import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
 import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.application.questionnaire.struts.DefaultQuestionnaireServiceFacadeLocator;
 import org.mifos.application.questionnaire.struts.QuestionnaireFlowAdapter;
 import org.mifos.application.questionnaire.struts.QuestionnaireServiceFacadeLocator;
-import org.mifos.application.servicefacade.CenterCreation;
-import org.mifos.application.servicefacade.CenterDto;
-import org.mifos.application.servicefacade.CenterFormCreationDto;
-import org.mifos.application.servicefacade.CenterUpdate;
-import org.mifos.application.servicefacade.CustomerDetailsDto;
 import org.mifos.application.servicefacade.CustomerSearch;
 import org.mifos.application.util.helpers.ActionForwards;
 import org.mifos.application.util.helpers.Methods;
-import org.mifos.customers.business.CustomerCustomFieldEntity;
+import org.mifos.calendar.CalendarUtils;
 import org.mifos.customers.center.business.CenterBO;
-import org.mifos.customers.center.business.service.CenterInformationDto;
 import org.mifos.customers.center.struts.actionforms.CenterCustActionForm;
 import org.mifos.customers.struts.action.CustAction;
 import org.mifos.customers.util.helpers.CustomerConstants;
+import org.mifos.dto.domain.AddressDto;
+import org.mifos.dto.domain.ApplicableAccountFeeDto;
+import org.mifos.dto.domain.CenterCreation;
+import org.mifos.dto.domain.CenterCreationDetail;
+import org.mifos.dto.domain.CenterDto;
+import org.mifos.dto.domain.CenterInformationDto;
+import org.mifos.dto.domain.CenterUpdate;
+import org.mifos.dto.domain.CreateAccountFeeDto;
+import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.CustomerDetailsDto;
+import org.mifos.dto.domain.MeetingDto;
+import org.mifos.dto.screen.CenterFormCreationDto;
 import org.mifos.dto.screen.OnlyBranchOfficeHierarchyDto;
+import org.mifos.framework.business.util.Address;
+import org.mifos.framework.exceptions.ApplicationException;
 import org.mifos.framework.exceptions.PageExpiredException;
 import org.mifos.framework.util.helpers.CloseSession;
 import org.mifos.framework.util.helpers.Constants;
@@ -54,20 +73,13 @@ import org.mifos.platform.questionnaire.service.QuestionnaireServiceFacade;
 import org.mifos.security.util.ActionSecurity;
 import org.mifos.security.util.SecurityConstants;
 import org.mifos.security.util.UserContext;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.List;
-
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.METHODCALLED;
+import org.mifos.service.BusinessRuleException;
 
 public class CenterCustAction extends CustAction {
 
     private QuestionnaireServiceFacadeLocator questionnaireServiceFacadeLocator = new DefaultQuestionnaireServiceFacadeLocator();
 
-    private QuestionnaireFlowAdapter createCenterQuestionnaire = new QuestionnaireFlowAdapter("Create", "Center", 
+    private QuestionnaireFlowAdapter createCenterQuestionnaire = new QuestionnaireFlowAdapter("Create", "Center",
             ActionForwards.preview_success, "custSearchAction.do?method=loadMainSearch", questionnaireServiceFacadeLocator
         );
 
@@ -101,12 +113,10 @@ public class CenterCustAction extends CustAction {
     public ActionForward chooseOffice(ActionMapping mapping, @SuppressWarnings("unused") ActionForm form,
             HttpServletRequest request, @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
 
-        UserContext userContext = getUserContext(request);
-
-        OnlyBranchOfficeHierarchyDto officeHierarchy = customerServiceFacade
-                .retrieveBranchOnlyOfficeHierarchy(userContext);
+        OnlyBranchOfficeHierarchyDto officeHierarchy = customerServiceFacade.retrieveBranchOnlyOfficeHierarchy();
 
         SessionUtils.setAttribute(OnlyBranchOfficeHierarchyDto.IDENTIFIER, officeHierarchy, request);
+        SessionUtils.setAttribute(CustomerConstants.URL_MAP, null, request.getSession(false));
 
         return mapping.findForward(ActionForwards.chooseOffice_success.toString());
     }
@@ -123,16 +133,12 @@ public class CenterCustAction extends CustAction {
         CenterCreation centerCreationDto = new CenterCreation(actionForm.getOfficeIdValue(), userContext.getId(),
                 userContext.getLevelId(), userContext.getPreferredLocale());
 
-        CenterFormCreationDto centerFormCreation = this.customerServiceFacade.retrieveCenterFormCreationData(
-                centerCreationDto, userContext);
+        CenterFormCreationDto centerFormCreation = this.centerServiceFacade.retrieveCenterFormCreationData(centerCreationDto);
 
-        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, centerFormCreation
-                .getCustomFieldViews(), request);
-        SessionUtils.setCollectionAttribute(CustomerConstants.LOAN_OFFICER_LIST, centerFormCreation
-                .getActiveLoanOfficersForBranch(), request);
-        SessionUtils.setCollectionAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, centerFormCreation
-                .getAdditionalFees(), request);
-        actionForm.setCustomFields(centerFormCreation.getCustomFieldViews());
+//        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, new ArrayList<Serializable>(), request);
+        SessionUtils.setCollectionAttribute(CustomerConstants.LOAN_OFFICER_LIST, centerFormCreation.getActiveLoanOfficersForBranch(), request);
+        SessionUtils.setCollectionAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, centerFormCreation.getAdditionalFees(), request);
+//        actionForm.setCustomFields(centerFormCreation.getCustomFieldViews());
         actionForm.setDefaultFees(centerFormCreation.getDefaultFees());
 
         DateTime today = new DateTime().toDateMidnight().toDateTime();
@@ -171,14 +177,30 @@ public class CenterCustAction extends CustAction {
 
         CenterCustActionForm actionForm = (CenterCustActionForm) form;
         MeetingBO meeting = (MeetingBO) SessionUtils.getAttribute(CustomerConstants.CUSTOMER_MEETING, request);
-        UserContext userContext = getUserContext(request);
 
-        List<CustomerCustomFieldEntity> customerCustomFields = CustomerCustomFieldEntity.fromDto(actionForm.getCustomFields(), null);
-        CustomerDetailsDto centerDetails = this.customerServiceFacade.createNewCenter(actionForm, meeting, userContext, customerCustomFields);
-        createCenterQuestionnaire.saveResponses(request, actionForm, centerDetails.getId());
+        LocalDate mfiJoiningDate = new LocalDate(CalendarUtils.getDateFromString(actionForm.getMfiJoiningDate(), getUserContext(request).getPreferredLocale()));
 
-        actionForm.setCustomerId(centerDetails.getId().toString());
-        actionForm.setGlobalCustNum(centerDetails.getGlobalCustNum());
+        Address address = actionForm.getAddress();
+        AddressDto addressDto = Address.toDto(address);
+
+        MeetingDto meetingDto = meeting.toDto();
+
+        List<CreateAccountFeeDto> accountFeesToBeApplied = new ArrayList<CreateAccountFeeDto>();
+        List<ApplicableAccountFeeDto> feesToBeApplied = actionForm.getFeesToApply();
+        for (ApplicableAccountFeeDto feeDto : feesToBeApplied) {
+            accountFeesToBeApplied.add(new CreateAccountFeeDto(feeDto.getFeeId(), feeDto.getAmount()));
+        }
+
+        try {
+            CenterCreationDetail centerCreationDetail = new CenterCreationDetail(mfiJoiningDate, actionForm.getDisplayName(), actionForm.getExternalId(), addressDto, actionForm.getLoanOfficerIdValue(), actionForm.getOfficeIdValue(), accountFeesToBeApplied);
+            CustomerDetailsDto centerDetails = this.centerServiceFacade.createNewCenter(centerCreationDetail, meetingDto);
+            createCenterQuestionnaire.saveResponses(request, actionForm, centerDetails.getId());
+
+            actionForm.setCustomerId(centerDetails.getId().toString());
+            actionForm.setGlobalCustNum(centerDetails.getGlobalCustNum());
+        } catch (BusinessRuleException e) {
+            throw new ApplicationException(e.getMessageKey(), e);
+        }
 
         return mapping.findForward(ActionForwards.create_success.toString());
     }
@@ -193,11 +215,12 @@ public class CenterCustAction extends CustAction {
         actionForm.clearActionFormFields();
         CenterBO center = (CenterBO) SessionUtils.getAttribute(Constants.BUSINESS_KEY, request);
         final Integer centerId = center.getCustomerId();
-        UserContext userContext = getUserContext(request);
+
+        center = this.customerDao.findCenterBySystemId(center.getGlobalCustNum());
 
         SessionUtils.setAttribute(Constants.BUSINESS_KEY, null, request);
 
-        CenterDto centerDto = this.customerServiceFacade.retrieveCenterDetailsForUpdate(centerId, userContext);
+        CenterDto centerDto = this.centerServiceFacade.retrieveCenterDetailsForUpdate(centerId);
 
         actionForm.setLoanOfficerId(centerDto.getLoanOfficerIdAsString());
         actionForm.setCustomerId(centerDto.getCustomerIdAsString());
@@ -206,15 +229,13 @@ public class CenterCustAction extends CustAction {
         actionForm.setMfiJoiningDate(centerDto.getMfiJoiningDateAsString());
         actionForm.setMfiJoiningDate(centerDto.getMfiJoiningDate().getDayOfMonth(), centerDto.getMfiJoiningDate()
                 .getMonthOfYear(), centerDto.getMfiJoiningDate().getYear());
-        actionForm.setAddress(centerDto.getAddress());
+        actionForm.setAddress(center.getAddress());
         actionForm.setCustomerPositions(centerDto.getCustomerPositionViews());
-        actionForm.setCustomFields(centerDto.getCustomFieldViews());
+        actionForm.setCustomFields(new ArrayList<CustomFieldDto>());
 
-        SessionUtils.setAttribute(Constants.BUSINESS_KEY, centerDto.getCenter(), request);
-        SessionUtils.setCollectionAttribute(CustomerConstants.LOAN_OFFICER_LIST, centerDto
-                .getActiveLoanOfficersForBranch(), request);
-        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, centerDto.getCustomFieldViews(),
-                request);
+        SessionUtils.setAttribute(Constants.BUSINESS_KEY, center, request);
+        SessionUtils.setCollectionAttribute(CustomerConstants.LOAN_OFFICER_LIST, centerDto.getActiveLoanOfficersForBranch(), request);
+        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, new ArrayList<CustomFieldDto>(), request);
         SessionUtils.setCollectionAttribute(CustomerConstants.POSITIONS, centerDto.getCustomerPositionViews(), request);
         SessionUtils.setCollectionAttribute(CustomerConstants.CLIENT_LIST, centerDto.getClientList(), request);
 
@@ -244,13 +265,21 @@ public class CenterCustAction extends CustAction {
 
         CenterBO centerFromSession = (CenterBO) SessionUtils.getAttribute(Constants.BUSINESS_KEY, request);
         CenterCustActionForm actionForm = (CenterCustActionForm) form;
-        UserContext userContext = getUserContext(request);
+
+        AddressDto dto = null;
+        if (actionForm.getAddress() != null) {
+            dto = Address.toDto(actionForm.getAddress());
+        }
 
         CenterUpdate centerUpdate = new CenterUpdate(centerFromSession.getCustomerId(), centerFromSession
                 .getVersionNo(), actionForm.getLoanOfficerIdValue(), actionForm.getExternalId(), actionForm
-                .getMfiJoiningDate(), actionForm.getAddress(), actionForm.getCustomFields(), actionForm.getCustomerPositions());
+                .getMfiJoiningDate(), dto, actionForm.getCustomFields(), actionForm.getCustomerPositions());
 
-        this.customerServiceFacade.updateCenter(userContext, centerUpdate);
+        try {
+            this.centerServiceFacade.updateCenter(centerUpdate);
+        } catch (BusinessRuleException e) {
+            throw new ApplicationException(e.getMessageKey(), e);
+        }
 
         return mapping.findForward(ActionForwards.update_success.toString());
     }
@@ -283,8 +312,7 @@ public class CenterCustAction extends CustAction {
             @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
 
         // John W - UserContext passed because some status' need to be looked up for internationalisation
-        CenterInformationDto centerInformationDto = this.centerDetailsServiceFacade.getCenterInformationDto(
-                ((CenterCustActionForm) form).getGlobalCustNum(), getUserContext(request));
+        CenterInformationDto centerInformationDto = this.centerServiceFacade.getCenterInformationDto(((CenterCustActionForm) form).getGlobalCustNum());
         SessionUtils.removeThenSetAttribute("centerInformationDto", centerInformationDto, request);
 
         // John W - 'BusinessKey' attribute used by breadcrumb but is not in associated jsp
@@ -341,9 +369,8 @@ public class CenterCustAction extends CustAction {
         cleanUpSearch(request);
         CenterCustActionForm actionForm = (CenterCustActionForm) form;
         String searchString = actionForm.getSearchString();
-        UserContext userContext = getUserContext(request);
 
-        CustomerSearch searchResult = this.customerServiceFacade.search(searchString, userContext);
+        CustomerSearch searchResult = this.customerServiceFacade.search(searchString);
 
         addSeachValues(searchString, searchResult.getOfficeId(), searchResult.getOfficeName(), request);
         SessionUtils.setQueryResultAttribute(Constants.SEARCH_RESULTS, searchResult.getSearchResult(), request);
@@ -361,9 +388,8 @@ public class CenterCustAction extends CustAction {
         ActionForward actionForward = super.search(mapping, form, request, response);
         CenterCustActionForm actionForm = (CenterCustActionForm) form;
         String searchString = actionForm.getSearchString();
-        UserContext userContext = getUserContext(request);
 
-        CustomerSearch searchResult = this.customerServiceFacade.search(searchString, userContext);
+        CustomerSearch searchResult = this.customerServiceFacade.search(searchString);
 
         addSeachValues(searchString, searchResult.getOfficeId(), searchResult.getOfficeName(), request);
         SessionUtils.setQueryResultAttribute(Constants.SEARCH_RESULTS, searchResult.getSearchResult(), request);

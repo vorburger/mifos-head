@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,10 +81,9 @@ explanation of the license and how it is applied.
 			      </td>
 			  </tr>			  
                 	<c:set var="customerLevel" value="${BusinessKey.customer.customerLevel.id}" />
+                	<!-- ${customerLevel} -->
 			  		<c:choose>
-				  		<c:when test="${customerLevel==CustomerLevel.CENTER.value or 
-				  				(customerLevel==CustomerLevel.GROUP.value and 
-				  				BusinessKey.recommendedAmntUnit.id==RecommendedAmountUnit.PERINDIVIDUAL.value)}">
+				  		<c:when test="${BusinessKey.groupModelWithIndividualAccountability == true}">
 						<tr>
 			                <td align="right" class="fontnormal">
 	            				<mifos:mifoslabel name="${ConfigurationConstants.CLIENT}" mandatory="yes"/>

@@ -1,3 +1,6 @@
+drop table if exists original_loan_fee_schedule;
+drop table if exists original_loan_schedule;
+
 drop table if exists prd_offering_mix;
 
 drop table if exists customer_family_detail;
@@ -44,6 +47,8 @@ drop table if exists loan_fee_schedule;
 drop table if exists customer_fee_schedule;
 
 drop table if exists fee_trxn_detail;
+
+drop table if exists calculated_interest_on_payment;
 
 drop table if exists account_trxn;
 
@@ -445,3 +450,4 @@ drop table if exists variable_installment_details;
 drop table if exists loan_cash_flow;
 drop table if exists monthly_cash_flow_details;
 drop table if exists cash_flow;
+drop table if exists cash_flow_detail;

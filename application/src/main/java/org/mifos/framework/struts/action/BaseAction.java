@@ -41,29 +41,36 @@ import org.hibernate.HibernateException;
 import org.mifos.accounts.fees.servicefacade.FeeServiceFacade;
 import org.mifos.accounts.fund.persistence.FundDao;
 import org.mifos.accounts.fund.servicefacade.FundServiceFacade;
+import org.mifos.accounts.loan.persistance.LoanDao;
+import org.mifos.accounts.productdefinition.persistence.LoanProductDao;
 import org.mifos.accounts.productdefinition.persistence.SavingsProductDao;
 import org.mifos.accounts.savings.persistence.SavingsDao;
+import org.mifos.accounts.servicefacade.AccountServiceFacade;
 import org.mifos.application.admin.servicefacade.HolidayServiceFacade;
 import org.mifos.application.admin.servicefacade.InvalidDateException;
 import org.mifos.application.admin.servicefacade.OfficeServiceFacade;
+import org.mifos.application.admin.servicefacade.PersonnelServiceFacade;
 import org.mifos.application.admin.system.ShutdownManager;
+import org.mifos.application.importexport.servicefacade.ImportTransactionsServiceFacade;
 import org.mifos.application.master.MessageLookup;
 import org.mifos.application.master.business.MasterDataEntity;
 import org.mifos.application.master.business.MifosCurrency;
 import org.mifos.application.master.business.service.MasterDataService;
+import org.mifos.application.servicefacade.CenterServiceFacade;
+import org.mifos.application.servicefacade.ClientServiceFacade;
 import org.mifos.application.servicefacade.CustomerServiceFacade;
 import org.mifos.application.servicefacade.DependencyInjectedServiceLocator;
+import org.mifos.application.servicefacade.GroupServiceFacade;
+import org.mifos.application.servicefacade.LoanAccountServiceFacade;
 import org.mifos.application.servicefacade.LoanServiceFacade;
 import org.mifos.application.servicefacade.MeetingServiceFacade;
 import org.mifos.application.servicefacade.SavingsServiceFacade;
 import org.mifos.application.util.helpers.ActionForwards;
 import org.mifos.application.util.helpers.EntityType;
 import org.mifos.config.AccountingRules;
-import org.mifos.customers.center.business.service.CenterDetailsServiceFacade;
-import org.mifos.customers.client.business.service.ClientDetailsServiceFacade;
-import org.mifos.customers.group.business.service.GroupDetailsServiceFacade;
-import org.mifos.customers.office.business.service.LegacyOfficeServiceFacade;
+import org.mifos.customers.office.persistence.OfficeDao;
 import org.mifos.customers.persistence.CustomerDao;
+import org.mifos.customers.personnel.persistence.PersonnelDao;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.business.LogUtils;
 import org.mifos.framework.business.service.BusinessService;
@@ -105,22 +112,29 @@ public abstract class BaseAction extends DispatchAction {
         return null;
     }
 
+    protected PersonnelDao personnelDao = DependencyInjectedServiceLocator.locatePersonnelDao();
+    protected OfficeDao officeDao = DependencyInjectedServiceLocator.locateOfficeDao();
     protected CustomerDao customerDao = DependencyInjectedServiceLocator.locateCustomerDao();
     protected SavingsDao savingsDao = DependencyInjectedServiceLocator.locateSavingsDao();
+    protected LoanDao loanDao = DependencyInjectedServiceLocator.locateLoanDao();
+    protected LoanProductDao loanProductDao = DependencyInjectedServiceLocator.locateLoanProductDao();
     protected SavingsProductDao savingsProductDao = DependencyInjectedServiceLocator.locateSavingsProductDao();
+    protected PersonnelServiceFacade personnelServiceFacade = DependencyInjectedServiceLocator.locatePersonnelServiceFacade();
     protected CustomerServiceFacade customerServiceFacade = DependencyInjectedServiceLocator.locateCustomerServiceFacade();
+    protected CenterServiceFacade centerServiceFacade = DependencyInjectedServiceLocator.locateCenterServiceFacade();
+    protected GroupServiceFacade groupServiceFacade = DependencyInjectedServiceLocator.locateGroupServiceFacade();
+    protected ClientServiceFacade clientServiceFacade = DependencyInjectedServiceLocator.locateClientServiceFacade();
+    protected AccountServiceFacade accountServiceFacade = DependencyInjectedServiceLocator.locateAccountServiceFacade();
     protected MeetingServiceFacade meetingServiceFacade = DependencyInjectedServiceLocator.locateMeetingServiceFacade();
-    protected CenterDetailsServiceFacade centerDetailsServiceFacade = DependencyInjectedServiceLocator.locateCenterDetailsServiceFacade();
-    protected GroupDetailsServiceFacade groupDetailsServiceFacade = DependencyInjectedServiceLocator.locateGroupDetailsServiceFacade();
-    protected ClientDetailsServiceFacade clientDetailsServiceFacade = DependencyInjectedServiceLocator.locateClientDetailsServiceFacade();
     protected LoanServiceFacade loanServiceFacade = DependencyInjectedServiceLocator.locateLoanServiceFacade();
+    protected LoanAccountServiceFacade loanAccountServiceFacade = DependencyInjectedServiceLocator.locateLoanAccountServiceFacade();
     protected SavingsServiceFacade savingsServiceFacade = DependencyInjectedServiceLocator.locateSavingsServiceFacade();
     protected HolidayServiceFacade holidayServiceFacade = DependencyInjectedServiceLocator.locateHolidayServiceFacade();
-    protected LegacyOfficeServiceFacade legacyOfficeServiceFacade = DependencyInjectedServiceLocator.locateLegacyOfficeServiceFacade();
     protected OfficeServiceFacade officeServiceFacade = DependencyInjectedServiceLocator.locateOfficeServiceFacade();
     protected FeeServiceFacade feeServiceFacade = DependencyInjectedServiceLocator.locateFeeServiceFacade();
     protected FundServiceFacade fundServiceFacade = DependencyInjectedServiceLocator.locateFundServiceFacade();
     protected AuthenticationAuthorizationServiceFacade authenticationAuthorizationServiceFacade = DependencyInjectedServiceLocator.locateAuthenticationAuthorizationServiceFacade();
+    protected ImportTransactionsServiceFacade importTransactionsServiceFacade = DependencyInjectedServiceLocator.locateImportTransactionsServiceFacade();
 
     protected FundDao fundDao = DependencyInjectedServiceLocator.locateFundDao();
 
@@ -132,22 +146,29 @@ public abstract class BaseAction extends DispatchAction {
         WebApplicationContext springAppContext = WebApplicationContextUtils.getWebApplicationContext(session.getServletContext());
 
         if (springAppContext != null) {
+            this.personnelDao = springAppContext.getBean(PersonnelDao.class);
+            this.officeDao = springAppContext.getBean(OfficeDao.class);
             this.customerDao = springAppContext.getBean(CustomerDao.class);
             this.savingsDao = springAppContext.getBean(SavingsDao.class);
+            this.loanDao = springAppContext.getBean(LoanDao.class);
+            this.loanProductDao = springAppContext.getBean(LoanProductDao.class);
             this.savingsProductDao = springAppContext.getBean(SavingsProductDao.class);
+            this.personnelServiceFacade = springAppContext.getBean(PersonnelServiceFacade.class);
             this.customerServiceFacade = springAppContext.getBean(CustomerServiceFacade.class);
+            this.centerServiceFacade = springAppContext.getBean(CenterServiceFacade.class);
+            this.groupServiceFacade = springAppContext.getBean(GroupServiceFacade.class);
+            this.clientServiceFacade = springAppContext.getBean(ClientServiceFacade.class);
+            this.accountServiceFacade = springAppContext.getBean(AccountServiceFacade.class);
             this.meetingServiceFacade = springAppContext.getBean(MeetingServiceFacade.class);
-            this.centerDetailsServiceFacade = springAppContext.getBean(CenterDetailsServiceFacade.class);
-            this.groupDetailsServiceFacade = springAppContext.getBean(GroupDetailsServiceFacade.class);
-            this.clientDetailsServiceFacade = springAppContext.getBean(ClientDetailsServiceFacade.class);
             this.loanServiceFacade = springAppContext.getBean(LoanServiceFacade.class);
+            this.loanAccountServiceFacade = springAppContext.getBean(LoanAccountServiceFacade.class);
             this.holidayServiceFacade = springAppContext.getBean(HolidayServiceFacade.class);
-            this.legacyOfficeServiceFacade = springAppContext.getBean(LegacyOfficeServiceFacade.class);
             this.officeServiceFacade = springAppContext.getBean(OfficeServiceFacade.class);
             this.feeServiceFacade = springAppContext.getBean(FeeServiceFacade.class);
             this.fundServiceFacade = springAppContext.getBean(FundServiceFacade.class);
             this.savingsServiceFacade = springAppContext.getBean(SavingsServiceFacade.class);
             this.authenticationAuthorizationServiceFacade = springAppContext.getBean(AuthenticationAuthorizationServiceFacade.class);
+            this.importTransactionsServiceFacade = springAppContext.getBean(ImportTransactionsServiceFacade.class);
 
             this.fundDao = springAppContext.getBean(FundDao.class);
         }
@@ -191,7 +212,8 @@ public abstract class BaseAction extends DispatchAction {
         }
     }
 
-    protected TransactionDemarcate getTransaction(ActionForm actionForm, HttpServletRequest request) {
+    @SuppressWarnings("unchecked")
+    protected TransactionDemarcate getTransaction(@SuppressWarnings("unused") ActionForm actionForm, HttpServletRequest request) {
         TransactionDemarcate annotation = null;
         try {
             String methodName = request.getParameter(MethodNameConstants.METHOD);
@@ -204,7 +226,8 @@ public abstract class BaseAction extends DispatchAction {
         return annotation;
     }
 
-    protected boolean isCloseSessionAnnotationPresent(ActionForm actionForm, HttpServletRequest request) {
+    @SuppressWarnings("unchecked")
+    protected boolean isCloseSessionAnnotationPresent(@SuppressWarnings("unused") ActionForm actionForm, HttpServletRequest request) {
         boolean isAnnotationPresent = false;
         try {
             String methodName = request.getParameter(MethodNameConstants.METHOD);
@@ -358,8 +381,6 @@ public abstract class BaseAction extends DispatchAction {
         return new MasterDataService().retrieveMasterEntities(type, localeId);
     }
 
-
-
     protected Short getShortValue(String str) {
         return StringUtils.isNotBlank(str) ? Short.valueOf(str) : null;
     }
@@ -420,7 +441,10 @@ public abstract class BaseAction extends DispatchAction {
     private ActionForward logout(ActionMapping mapping, HttpServletRequest request) {
         request.getSession(false).invalidate();
         ActionErrors error = new ActionErrors();
-        error.add(LoginConstants.BATCH_JOB_RUNNING, new ActionMessage(LoginConstants.BATCH_JOB_RUNNING));
+        error.add(LoginConstants.BATCH_JOB_RUNNING, new ActionMessage(
+                messages.getMessage(LoginConstants.BATCH_JOB_RUNNING,
+                        "You have been logged out of the system because batch jobs are running.")
+                ));
         request.setAttribute(Globals.ERROR_KEY, error);
         return mapping.findForward(ActionForwards.load_main_page.toString());
     }
@@ -428,14 +452,17 @@ public abstract class BaseAction extends DispatchAction {
     private ActionForward shutdown(ActionMapping mapping, HttpServletRequest request) {
         request.getSession(false).invalidate();
         ActionErrors error = new ActionErrors();
-        error.add(LoginConstants.SHUTDOWN, new ActionMessage(LoginConstants.SHUTDOWN));
+        error.add(LoginConstants.SHUTDOWN, new ActionMessage(
+                messages.getMessage(LoginConstants.SHUTDOWN,
+                        "You have been logged out of the system because Mifos is shutting down.")
+        ));
         request.setAttribute(Globals.ERROR_KEY, error);
         return mapping.findForward(ActionForwards.load_main_page.toString());
     }
 
     @TransactionDemarcate(joinToken = true)
-    public ActionForward loadChangeLog(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+    public ActionForward loadChangeLog(ActionMapping mapping, @SuppressWarnings("unused") ActionForm form, HttpServletRequest request,
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         Short entityType = EntityType.getEntityValue(request.getParameter(AuditConstants.ENTITY_TYPE).toUpperCase());
         Integer entityId = Integer.valueOf(request.getParameter(AuditConstants.ENTITY_ID));
         AuditBusinessService auditBusinessService = new AuditBusinessService();
@@ -446,8 +473,8 @@ public abstract class BaseAction extends DispatchAction {
     }
 
     @TransactionDemarcate(saveToken = true)
-    public ActionForward cancelChangeLog(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+    public ActionForward cancelChangeLog(ActionMapping mapping, @SuppressWarnings("unused") ActionForm form, HttpServletRequest request,
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         return mapping.findForward(AuditConstants.CANCEL + request.getParameter(AuditConstants.ENTITY_TYPE)
                 + AuditConstants.CHANGE_LOG);
     }
@@ -465,8 +492,8 @@ public abstract class BaseAction extends DispatchAction {
      * call
      * "ActionMapping mapping = request.getAttribute(Constants.ACTION_MAPPING)"
      */
-    public ActionForward findActionMapping(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+    public ActionForward findActionMapping(ActionMapping mapping, @SuppressWarnings("unused") ActionForm form, HttpServletRequest request,
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         request.setAttribute(Constants.ACTION_MAPPING, mapping);
         // welcome is a global forward, present in all actions
         return mapping.findForward(ActionForwards.welcome.toString());
@@ -487,5 +514,11 @@ public abstract class BaseAction extends DispatchAction {
         return currency;
     }
 
+    public void setLoanServiceFacade(LoanServiceFacade loanServiceFacade) {
+        this.loanServiceFacade = loanServiceFacade;
+    }
 
+    public void setLoanAccountServiceFacade(LoanAccountServiceFacade loanAccountServiceFacade) {
+        this.loanAccountServiceFacade = loanAccountServiceFacade;
+    }
 }

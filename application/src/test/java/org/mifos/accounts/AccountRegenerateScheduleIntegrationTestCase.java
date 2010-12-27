@@ -47,20 +47,22 @@ import org.mifos.application.meeting.util.helpers.RankOfDay;
 import org.mifos.application.meeting.util.helpers.RecurrenceType;
 import org.mifos.application.meeting.util.helpers.WeekDay;
 import org.mifos.application.servicefacade.DependencyInjectedServiceLocator;
-import org.mifos.application.servicefacade.MeetingUpdateRequest;
 import org.mifos.config.FiscalCalendarRules;
 import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.business.CustomerBOTestUtils;
 import org.mifos.customers.business.CustomerStatusEntity;
 import org.mifos.customers.business.service.CustomerService;
 import org.mifos.customers.client.business.ClientBO;
+import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.util.helpers.CustomerStatus;
+import org.mifos.domain.builders.MeetingUpdateRequestBuilder;
+import org.mifos.dto.domain.MeetingUpdateRequest;
 import org.mifos.framework.MifosIntegrationTestCase;
 import org.mifos.framework.TestUtils;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
-import org.mifos.framework.persistence.TestDatabase;
 import org.mifos.framework.util.DateTimeService;
 import org.mifos.framework.util.helpers.DateUtils;
+import org.mifos.framework.util.helpers.IntegrationTestObjectMother;
 import org.mifos.framework.util.helpers.TestObjectFactory;
 
 import java.util.ArrayList;
@@ -406,8 +408,9 @@ public class AccountRegenerateScheduleIntegrationTestCase extends MifosIntegrati
         center = TestObjectFactory.getCenter(center.getCustomerId());
         accountBO = TestObjectFactory.getObject(LoanBO.class, accountBO.getAccountId());
         if (useClosedAndCancelled) {
-            accountBO.changeStatus(AccountState.LOAN_CANCELLED, null, "");
-            savingsBO.changeStatus(AccountState.SAVINGS_CANCELLED.getValue(), null, "");
+            PersonnelBO loggedInUser = IntegrationTestObjectMother.testUser();
+            accountBO.changeStatus(AccountState.LOAN_CANCELLED, null, "", loggedInUser);
+            savingsBO.changeStatus(AccountState.SAVINGS_CANCELLED.getValue(), null, "", loggedInUser);
             CustomerStatusEntity customerStatusEntity = new CustomerStatusEntity(CustomerStatus.GROUP_CLOSED);
             CustomerBOTestUtils.setCustomerStatus(group, customerStatusEntity);
             StaticHibernateUtil.flushSession();
@@ -416,7 +419,12 @@ public class AccountRegenerateScheduleIntegrationTestCase extends MifosIntegrati
         new DateTimeService().setCurrentDateTime(dateWhenMeetingWillBeChanged.toDateTimeAtStartOfDay());
 
         CustomerService customerService = DependencyInjectedServiceLocator.locateCustomerService();
-        MeetingUpdateRequest meetingUpdateRequest = new MeetingUpdateRequest(center.getCustomerId(), center.getVersionNo(), newMeeting.getRecurrenceType(), newMeeting.getMeetingPlace(), newMeeting.getRecurAfter(), newMeeting.getMeetingDetails().getWeekDay(), newMeeting.getMeetingDetails().getDayNumber(), newMeeting.getMeetingDetails().getWeekDay(), newMeeting.getMeetingDetails().getWeekRank());
+
+        MeetingUpdateRequest meetingUpdateRequest = new MeetingUpdateRequest(center.getCustomerId(), center.getVersionNo(), newMeeting.getRecurrenceType().getValue(),
+                newMeeting.getMeetingPlace(),
+                newMeeting.getRecurAfter(), newMeeting.getMeetingDetails().getWeekDay().getValue(),
+                newMeeting.getMeetingDetails().getDayNumber(), newMeeting.getMeetingDetails().getWeekDay().getValue(),
+                newMeeting.getMeetingDetails().getWeekRank().getValue());
         customerService.updateCustomerMeetingSchedule(meetingUpdateRequest, TestUtils.makeUser());
 
         TestObjectFactory.updateObject(center);

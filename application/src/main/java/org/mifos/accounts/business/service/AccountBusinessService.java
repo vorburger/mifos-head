@@ -28,10 +28,8 @@ import org.mifos.accounts.business.AccountActionEntity;
 import org.mifos.accounts.business.AccountBO;
 import org.mifos.accounts.business.AccountStateEntity;
 import org.mifos.accounts.business.AccountStateMachines;
-import org.mifos.accounts.business.TransactionHistoryDto;
 import org.mifos.accounts.fees.business.AmountFeeBO;
 import org.mifos.accounts.fees.business.FeeBO;
-import org.mifos.accounts.fees.business.FeeFormulaEntity;
 import org.mifos.accounts.fees.business.FeePaymentEntity;
 import org.mifos.accounts.fees.business.RateFeeBO;
 import org.mifos.accounts.fees.util.helpers.FeeCategory;
@@ -41,13 +39,11 @@ import org.mifos.accounts.fees.util.helpers.FeePayment;
 import org.mifos.accounts.fees.util.helpers.RateAmountFlag;
 import org.mifos.accounts.loan.business.LoanBO;
 import org.mifos.accounts.persistence.AccountPersistence;
-import org.mifos.accounts.productdefinition.util.helpers.ProductDefinitionConstants;
 import org.mifos.accounts.util.helpers.AccountConstants;
 import org.mifos.accounts.util.helpers.AccountExceptionConstants;
 import org.mifos.accounts.util.helpers.AccountState;
 import org.mifos.accounts.util.helpers.AccountStateFlag;
 import org.mifos.accounts.util.helpers.AccountTypes;
-import org.mifos.accounts.util.helpers.ApplicableCharge;
 import org.mifos.accounts.util.helpers.WaiveEnum;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.master.persistence.MasterPersistence;
@@ -55,18 +51,17 @@ import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.application.meeting.util.helpers.MeetingHelper;
 import org.mifos.application.util.helpers.EntityType;
 import org.mifos.config.AccountingRules;
+import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.business.CustomerAccountBO;
 import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.checklist.business.AccountCheckListBO;
 import org.mifos.customers.exceptions.CustomerException;
-import org.mifos.customers.api.CustomerLevel;
+import org.mifos.dto.domain.ApplicableCharge;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.business.service.BusinessService;
 import org.mifos.framework.exceptions.ApplicationException;
 import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.exceptions.ServiceException;
-import org.mifos.framework.exceptions.StatesInitializationException;
-import org.mifos.framework.hibernate.helper.QueryResult;
 import org.mifos.framework.util.LocalizationConverter;
 import org.mifos.security.util.ActivityMapper;
 import org.mifos.security.util.SecurityConstants;
@@ -88,11 +83,6 @@ public class AccountBusinessService implements BusinessService {
         }
     }
 
-    public List<TransactionHistoryDto> getTrxnHistory(AccountBO accountBO, UserContext uc) {
-        accountBO.setUserContext(uc);
-        return accountBO.getTransactionHistoryView();
-    }
-
     public AccountBO getAccount(Integer accountId) throws ServiceException {
         try {
             return getAccountPersistence().getAccount(accountId);
@@ -111,14 +101,6 @@ public class AccountBusinessService implements BusinessService {
             throw new ServiceException(e);
         }
         return accountAction;
-    }
-
-    public QueryResult getAllAccountNotes(Integer accountId) throws ServiceException {
-        try {
-            return getAccountPersistence().getAllAccountNotes(accountId);
-        } catch (PersistenceException e) {
-            throw new ServiceException(e);
-        }
     }
 
     public List<AccountStateEntity> retrieveAllAccountStateList(AccountTypes accountTypes) throws ServiceException {
@@ -338,14 +320,6 @@ public class AccountBusinessService implements BusinessService {
         applicableCharge.setFeeName("Misc Penalty");
         applicableCharge.setIsRateType(false);
         applicableChargeList.add(applicableCharge);
-    }
-
-    public void initializeStateMachine(AccountTypes accountType, CustomerLevel customerLevel) throws ServiceException {
-        try {
-            AccountStateMachines.getInstance().initialize(accountType, customerLevel);
-        } catch (StatesInitializationException e) {
-            throw new ServiceException(e);
-        }
     }
 
     public String getStatusName(AccountState accountState, AccountTypes accountType) {

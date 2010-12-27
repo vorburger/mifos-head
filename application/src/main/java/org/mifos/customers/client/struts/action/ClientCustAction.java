@@ -20,45 +20,73 @@
 
 package org.mifos.customers.client.struts.action;
 
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.METHODCALLED;
+
+import java.io.BufferedOutputStream;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.struts.action.ActionErrors;
 import org.apache.struts.action.ActionForm;
 import org.apache.struts.action.ActionForward;
 import org.apache.struts.action.ActionMapping;
 import org.joda.time.DateTime;
+import org.mifos.application.admin.servicefacade.InvalidDateException;
+import org.mifos.application.master.business.SpouseFatherLookupEntity;
+import org.mifos.application.master.persistence.MasterPersistence;
 import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.application.questionnaire.struts.DefaultQuestionnaireServiceFacadeLocator;
 import org.mifos.application.questionnaire.struts.QuestionnaireAction;
 import org.mifos.application.questionnaire.struts.QuestionnaireFlowAdapter;
 import org.mifos.application.questionnaire.struts.QuestionnaireServiceFacadeLocator;
-import org.mifos.application.servicefacade.ClientDetailDto;
-import org.mifos.application.servicefacade.ClientFamilyDetailsDto;
-import org.mifos.application.servicefacade.ClientFamilyInfoDto;
-import org.mifos.application.servicefacade.ClientFormCreationDto;
-import org.mifos.application.servicefacade.ClientMfiInfoDto;
-import org.mifos.application.servicefacade.ClientPersonalInfoDto;
-import org.mifos.application.servicefacade.ClientRulesDto;
-import org.mifos.application.servicefacade.CustomerDetailsDto;
-import org.mifos.application.servicefacade.ProcessRulesDto;
 import org.mifos.application.util.helpers.ActionForwards;
+import org.mifos.application.util.helpers.YesNoFlag;
 import org.mifos.config.ClientRules;
 import org.mifos.config.util.helpers.HiddenMandatoryFieldNamesConstants;
 import org.mifos.customers.business.CustomerBO;
-import org.mifos.customers.business.CustomerCustomFieldEntity;
 import org.mifos.customers.center.util.helpers.CenterConstants;
 import org.mifos.customers.client.business.ClientBO;
-import org.mifos.customers.client.business.ClientFamilyDetailDto;
-import org.mifos.customers.client.business.ClientNameDetailDto;
-import org.mifos.customers.client.business.service.ClientInformationDto;
 import org.mifos.customers.client.struts.actionforms.ClientCustActionForm;
 import org.mifos.customers.client.util.helpers.ClientConstants;
+import org.mifos.customers.exceptions.CustomerException;
 import org.mifos.customers.group.util.helpers.GroupConstants;
 import org.mifos.customers.struts.action.CustAction;
 import org.mifos.customers.util.helpers.CustomerConstants;
-import org.mifos.customers.util.helpers.SavingsDetailDto;
 import org.mifos.customers.util.helpers.CustomerStatus;
+import org.mifos.dto.domain.AddressDto;
+import org.mifos.dto.domain.ApplicableAccountFeeDto;
+import org.mifos.dto.domain.ClientCreationDetail;
+import org.mifos.dto.domain.ClientFamilyDetailsDto;
+import org.mifos.dto.domain.ClientFamilyInfoUpdate;
+import org.mifos.dto.domain.ClientMfiInfoUpdate;
+import org.mifos.dto.domain.ClientPersonalInfoUpdate;
+import org.mifos.dto.domain.ClientRulesDto;
+import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.CustomerDetailsDto;
+import org.mifos.dto.domain.MeetingDto;
+import org.mifos.dto.domain.ProcessRulesDto;
+import org.mifos.dto.domain.SavingsDetailDto;
+import org.mifos.dto.screen.ClientFamilyDetailDto;
+import org.mifos.dto.screen.ClientFamilyInfoDto;
+import org.mifos.dto.screen.ClientFormCreationDto;
+import org.mifos.dto.screen.ClientInformationDto;
+import org.mifos.dto.screen.ClientMfiInfoDto;
+import org.mifos.dto.screen.ClientNameDetailDto;
+import org.mifos.dto.screen.ClientPersonalDetailDto;
+import org.mifos.dto.screen.ClientPersonalInfoDto;
 import org.mifos.dto.screen.OnlyBranchOfficeHierarchyDto;
+import org.mifos.framework.business.util.Address;
 import org.mifos.framework.components.fieldConfiguration.util.helpers.FieldConfig;
-import org.mifos.framework.exceptions.ApplicationException;
 import org.mifos.framework.exceptions.PageExpiredException;
 import org.mifos.framework.util.helpers.CloseSession;
 import org.mifos.framework.util.helpers.Constants;
@@ -70,20 +98,6 @@ import org.mifos.platform.questionnaire.service.QuestionnaireServiceFacade;
 import org.mifos.security.util.ActionSecurity;
 import org.mifos.security.util.SecurityConstants;
 import org.mifos.security.util.UserContext;
-import org.mifos.service.MifosServiceFactory;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedOutputStream;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.sql.Date;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Map;
-
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.METHODCALLED;
 
 public class ClientCustAction extends CustAction implements QuestionnaireAction {
 
@@ -141,10 +155,7 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
         actionForm.setGroupFlag(ClientConstants.NO);
 
-        UserContext userContext = getUserContext(request);
-
-        OnlyBranchOfficeHierarchyDto officeHierarchy = customerServiceFacade
-                .retrieveBranchOnlyOfficeHierarchy(userContext);
+        OnlyBranchOfficeHierarchyDto officeHierarchy = customerServiceFacade.retrieveBranchOnlyOfficeHierarchy();
 
         SessionUtils.setAttribute(OnlyBranchOfficeHierarchyDto.IDENTIFIER, officeHierarchy, request);
 
@@ -155,6 +166,7 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
     public ActionForward load(ActionMapping mapping, ActionForm form, HttpServletRequest request,
                               @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
+        UserContext userContext = getUserContext(request);
 
         actionForm.clearMostButNotAllFieldsOnActionForm();
         SessionUtils.removeAttribute(CustomerConstants.CUSTOMER_MEETING, request);
@@ -163,8 +175,7 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         Short groupFlag = actionForm.getGroupFlagValue();
         String parentGroupId = actionForm.getParentGroupId();
 
-        UserContext userContext = getUserContext(request);
-        ClientFormCreationDto clientFormCreationDto = this.customerServiceFacade.retrieveClientFormCreationData(userContext, groupFlag, officeId, parentGroupId);
+        ClientFormCreationDto clientFormCreationDto = this.clientServiceFacade.retrieveClientFormCreationData(groupFlag, officeId, parentGroupId);
 
         if (clientFormCreationDto.getFormedByPersonnelId() != null) {
             actionForm.setFormedByPersonnel(clientFormCreationDto.getFormedByPersonnelId().toString());
@@ -178,8 +189,16 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
             actionForm.setLoanOfficerId(clientFormCreationDto.getFormedByPersonnelId().toString());
         }
         actionForm.setLoanOfficerName(clientFormCreationDto.getFormedByPersonnelName());
-        actionForm.setCustomFields(clientFormCreationDto.getCustomFieldViews());
-        actionForm.setDefaultFees(clientFormCreationDto.getApplicableFees().getDefaultFees());
+        actionForm.setCustomFields(new ArrayList<CustomFieldDto>());
+
+        List<ApplicableAccountFeeDto> defaultFees = clientFormCreationDto.getDefaultFees();
+        actionForm.setDefaultFees(defaultFees);
+
+        List<ApplicableAccountFeeDto> additionalFees = clientFormCreationDto.getAdditionalFees();
+        SessionUtils.setCollectionAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, additionalFees, request);
+
+        List<SpouseFatherLookupEntity> spouseFather = new MasterPersistence().retrieveMasterEntities(SpouseFatherLookupEntity.class, userContext.getLocaleId());
+        SessionUtils.setCollectionAttribute(ClientConstants.SPOUSE_FATHER_ENTITY, spouseFather, request);
 
         SessionUtils.setCollectionAttribute(ClientConstants.SALUTATION_ENTITY, clientFormCreationDto.getClientDropdowns().getSalutations(), request);
         SessionUtils.setCollectionAttribute(ClientConstants.GENDER_ENTITY, clientFormCreationDto.getClientDropdowns().getGenders(), request);
@@ -190,10 +209,8 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         SessionUtils.setCollectionAttribute(ClientConstants.BUSINESS_ACTIVITIES_ENTITY, clientFormCreationDto.getClientDropdowns().getBusinessActivity(), request);
         SessionUtils.setCollectionAttribute(ClientConstants.POVERTY_STATUS, clientFormCreationDto.getClientDropdowns().getPoverty(), request);
         SessionUtils.setCollectionAttribute(ClientConstants.HANDICAPPED_ENTITY, clientFormCreationDto.getClientDropdowns().getHandicapped(), request);
-        SessionUtils.setCollectionAttribute(ClientConstants.SPOUSE_FATHER_ENTITY, clientFormCreationDto.getClientDropdowns().getSpouseFather(), request);
-        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, clientFormCreationDto.getCustomFieldViews(), request);
+        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, new ArrayList<CustomFieldDto>(), request);
         SessionUtils.setCollectionAttribute(CustomerConstants.LOAN_OFFICER_LIST, clientFormCreationDto.getPersonnelList(), request);
-        SessionUtils.setCollectionAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, clientFormCreationDto.getApplicableFees().getAdditionalFees(), request);
         SessionUtils.setCollectionAttribute(CustomerConstants.FORMEDBY_LOAN_OFFICER_LIST, clientFormCreationDto.getFormedByPersonnelList(), request);
         SessionUtils.setCollectionAttribute(ClientConstants.SAVINGS_OFFERING_LIST, clientFormCreationDto.getSavingsOfferings(), request);
         SessionUtils.setAttribute(GroupConstants.CENTER_HIERARCHY_EXIST, ClientRules.getCenterHierarchyExists(), request);
@@ -220,7 +237,7 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
 
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
 
-        ClientFamilyDetailsDto clientFamilyDetails = this.customerServiceFacade.retrieveClientFamilyDetails();
+        ClientFamilyDetailsDto clientFamilyDetails = this.clientServiceFacade.retrieveClientFamilyDetails();
 
         if (clientFamilyDetails.isFamilyDetailsRequired()) {
 
@@ -236,8 +253,7 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
     }
 
     @TransactionDemarcate(joinToken = true)
-    public ActionForward familyInfoNext(ActionMapping mapping, ActionForm form,
-                                        @SuppressWarnings("unused") HttpServletRequest request,
+    public ActionForward familyInfoNext(ActionMapping mapping, ActionForm form, HttpServletRequest request,
                                         @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
         actionForm.setFamilyDateOfBirth();
@@ -294,18 +310,25 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
                                  @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
         String governmentId = actionForm.getGovernmentId();
-        String clientName = actionForm.getClientName().getDisplayName();
+        ClientNameDetailDto clientNameDetail = actionForm.getClientName();
+        clientNameDetail.setNames(ClientRules.getNameSequence());
+        String clientName = clientNameDetail.getDisplayName();
         String givenDateOfBirth = actionForm.getDateOfBirth();
-        if (actionForm.isDefaultFeeRemoved()) {
-            customerDao.checkPermissionForDefaultFeeRemoval(getUserContext(request), actionForm.getOfficeIdValue(), actionForm.getLoanOfficerIdValue());
-        }
+
+        ClientNameDetailDto spouseName = actionForm.getSpouseName();
+        spouseName.setNames(ClientRules.getNameSequence());
+
         DateTime dateOfBirth = new DateTime(DateUtils.getDateAsSentFromBrowser(givenDateOfBirth));
-        ProcessRulesDto processRules = this.customerServiceFacade.previewClient(governmentId, dateOfBirth, clientName);
+        ProcessRulesDto processRules = this.clientServiceFacade.previewClient(governmentId, dateOfBirth, clientName, actionForm.isDefaultFeeRemoved(), actionForm.getOfficeIdValue(), actionForm.getLoanOfficerIdValue());
+
         String pendingApprovalState = processRules.isClientPendingApprovalStateEnabled() ? CustomerConstants.YES : CustomerConstants.NO;
         SessionUtils.setAttribute(CustomerConstants.PENDING_APPROVAL_DEFINED, pendingApprovalState, request);
+
         addWarningMessages(request, processRules);
         actionForm.setEditFamily("edit");
         actionForm.setAge(calculateAge(DateUtils.getDateAsSentFromBrowser(givenDateOfBirth)));
+        actionForm.setClientName(clientNameDetail);
+        actionForm.setSpouseName(spouseName);
         return mapping.findForward(ActionForwards.preview_success.toString());
     }
 
@@ -324,7 +347,6 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         }
     }
 
-    @TransactionDemarcate(validateAndResetToken = true)
     public ActionForward cancel(ActionMapping mapping, ActionForm form,
                                 @SuppressWarnings("unused") HttpServletRequest request,
                                 @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
@@ -456,19 +478,61 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
                                 @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
 
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
-        UserContext userContext = getUserContext(request);
-
         MeetingBO meeting = (MeetingBO) SessionUtils.getAttribute(CustomerConstants.CUSTOMER_MEETING, request);
         List<SavingsDetailDto> allowedSavingProducts = getSavingsOfferingsFromSession(request);
 
-        List<CustomerCustomFieldEntity> customerCustomFields = CustomerCustomFieldEntity.fromDto(actionForm.getCustomFields(), null);
-        CustomerDetailsDto clientDetails = this.customerServiceFacade.createNewClient(actionForm, meeting, userContext, allowedSavingProducts, customerCustomFields);
+//        List<CustomerCustomFieldEntity> customerCustomFields = CustomerCustomFieldEntity.fromDto(actionForm.getCustomFields(), null);
+
+        if (ClientRules.isFamilyDetailsRequired()) {
+            actionForm.setFamilyDateOfBirth();
+            actionForm.constructFamilyDetails();
+        }
+
+        List<Short> selectedSavingProducts = actionForm.getSelectedOfferings();
+        String clientName = actionForm.getClientName().getDisplayName();
+        Short clientStatus = actionForm.getStatusValue().getValue();
+        java.sql.Date mfiJoiningDate = DateUtils.getDateAsSentFromBrowser(actionForm.getMfiJoiningDate());
+        String externalId = actionForm.getExternalId();
+        AddressDto address = null;
+        if (actionForm.getAddress() != null) {
+            address = Address.toDto(actionForm.getAddress());
+        }
+        Short formedBy = actionForm.getFormedByPersonnelValue();
+        java.sql.Date dateOfBirth = DateUtils.getDateAsSentFromBrowser(actionForm.getDateOfBirth());
+        String governmentId = actionForm.getGovernmentId();
+        boolean trained = isTrained(actionForm.getTrainedValue());
+        java.sql.Date trainedDate = DateUtils.getDateAsSentFromBrowser(actionForm.getTrainedDate());
+        Short groupFlagValue = actionForm.getGroupFlagValue();
+        ClientNameDetailDto clientNameDetailDto = actionForm.getClientName();
+        ClientPersonalDetailDto clientPersonalDetailDto = actionForm.getClientDetailView();
+        ClientNameDetailDto spouseFatherName = actionForm.getSpouseName();
+        InputStream picture = actionForm.getCustomerPicture();
+        String parentGroupId = actionForm.getParentGroupId();
+        List<ClientNameDetailDto> familyNames = actionForm.getFamilyNames();
+        List<ClientFamilyDetailDto> familyDetails = actionForm.getFamilyDetails();
+        Short loanOfficerId = actionForm.getLoanOfficerIdValue();
+        Short officeId = actionForm.getOfficeIdValue();
+
+        ClientCreationDetail clientCreationDetail = new ClientCreationDetail(selectedSavingProducts, clientName, clientStatus, mfiJoiningDate, externalId,
+                address, formedBy, dateOfBirth, governmentId, trained, trainedDate, groupFlagValue, clientNameDetailDto, clientPersonalDetailDto, spouseFatherName,
+                picture, actionForm.getFeesToApply(), parentGroupId, familyNames, familyDetails, loanOfficerId, officeId);
+
+        MeetingDto meetingDto = null;
+        if (meeting != null) {
+            meetingDto = meeting.toDto();
+        }
+
+        CustomerDetailsDto clientDetails = this.clientServiceFacade.createNewClient(clientCreationDetail, meetingDto, allowedSavingProducts);
 
         actionForm.setCustomerId(clientDetails.getId().toString());
         actionForm.setGlobalCustNum(clientDetails.getGlobalCustNum());
         actionForm.setEditFamily("notEdit");
         createClientQuestionnaire.saveResponses(request, actionForm, clientDetails.getId());
         return mapping.findForward(ActionForwards.create_success.toString());
+    }
+
+    private boolean isTrained(Short trainedValue) {
+        return Short.valueOf("1").equals(trainedValue);
     }
 
     @TransactionDemarcate(joinToken = true)
@@ -482,11 +546,8 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
     public ActionForward get(ActionMapping mapping, ActionForm form, HttpServletRequest request,
                              @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
 
-        // John W - UserContext object passed because some status' need to be looked up for internationalisation based
-        // on UserContext info
-        UserContext userContext = getUserContext(request);
-        ClientInformationDto clientInformationDto = clientDetailsServiceFacade.getClientInformationDto(
-                ((ClientCustActionForm) form).getGlobalCustNum(), userContext);
+        String clientSystemId = ((ClientCustActionForm) form).getGlobalCustNum();
+        ClientInformationDto clientInformationDto = clientServiceFacade.getClientInformationDto(clientSystemId);
         SessionUtils.removeThenSetAttribute("clientInformationDto", clientInformationDto, request);
 
         // John W - for breadcrumb or another other action downstream that exists business_key set (until refactored)
@@ -543,11 +604,11 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
 
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
         actionForm.clearMostButNotAllFieldsOnActionForm();
-        UserContext userContext = getUserContext(request);
         ClientBO clientFromSession = getClientFromSession(request);
         final String clientSystemId = clientFromSession.getGlobalCustNum();
+        ClientBO client = this.customerDao.findClientBySystemId(clientSystemId);
 
-        ClientPersonalInfoDto personalInfo = this.customerServiceFacade.retrieveClientPersonalInfoForUpdate(clientSystemId, userContext);
+        ClientPersonalInfoDto personalInfo = this.clientServiceFacade.retrieveClientPersonalInfoForUpdate(clientSystemId);
 
         SessionUtils.setCollectionAttribute(ClientConstants.SALUTATION_ENTITY, personalInfo.getClientDropdowns().getSalutations(), request);
         SessionUtils.setCollectionAttribute(ClientConstants.GENDER_ENTITY, personalInfo.getClientDropdowns().getGenders(), request);
@@ -558,7 +619,10 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         SessionUtils.setCollectionAttribute(ClientConstants.BUSINESS_ACTIVITIES_ENTITY, personalInfo.getClientDropdowns().getBusinessActivity(), request);
         SessionUtils.setCollectionAttribute(ClientConstants.POVERTY_STATUS, personalInfo.getClientDropdowns().getPoverty(), request);
         SessionUtils.setCollectionAttribute(ClientConstants.HANDICAPPED_ENTITY, personalInfo.getClientDropdowns().getHandicapped(), request);
-        SessionUtils.setCollectionAttribute(ClientConstants.SPOUSE_FATHER_ENTITY, personalInfo.getClientDropdowns().getSpouseFather(), request);
+
+        UserContext userContext = getUserContext(request);
+        List<SpouseFatherLookupEntity> spouseFather = new MasterPersistence().retrieveMasterEntities(SpouseFatherLookupEntity.class, userContext.getLocaleId());
+        SessionUtils.setCollectionAttribute(ClientConstants.SPOUSE_FATHER_ENTITY, spouseFather, request);
 
         boolean isFamilyDetailsRequired = personalInfo.getClientRules().isFamilyDetailsRequired();
         SessionUtils.setAttribute(ClientConstants.ARE_FAMILY_DETAILS_REQUIRED, isFamilyDetailsRequired, request);
@@ -569,24 +633,33 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
             SessionUtils.setAttribute(ClientConstants.ARE_FAMILY_DETAILS_MANDATORY, isSpouseFatherInformationMandatory(), request);
             SessionUtils.setAttribute(ClientConstants.ARE_FAMILY_DETAILS_HIDDEN, isSpouseFatherInformationHidden(), request);
         }
-        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, personalInfo.getCustomFieldViews(), request);
+        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, new ArrayList<CustomFieldDto>(), request);
 
         // customer specific
         actionForm.setCustomerId(personalInfo.getCustomerDetail().getCustomerId().toString());
         actionForm.setLoanOfficerId(personalInfo.getCustomerDetail().getLoanOfficerIdAsString());
         actionForm.setGlobalCustNum(personalInfo.getCustomerDetail().getGlobalCustNum());
         actionForm.setExternalId(personalInfo.getCustomerDetail().getExternalId());
-        actionForm.setAddress(personalInfo.getCustomerDetail().getAddress());
+
+        actionForm.setAddress(client.getAddress());
 
         // client specific
         actionForm.setGovernmentId(personalInfo.getClientDetail().getGovernmentId());
         actionForm.setDateOfBirth(personalInfo.getClientDetail().getDateOfBirth());
         actionForm.setClientDetailView(personalInfo.getClientDetail().getCustomerDetail());
-        actionForm.setClientName(personalInfo.getClientDetail().getClientName());
-        actionForm.setSpouseName(personalInfo.getClientDetail().getSpouseName());
-        actionForm.setCustomFields(personalInfo.getCustomFieldViews());
 
-        ClientBO client = this.customerDao.findClientBySystemId(clientSystemId);
+        ClientNameDetailDto clientName = personalInfo.getClientDetail().getClientName();
+        clientName.setNames(ClientRules.getNameSequence());
+        actionForm.setClientName(clientName);
+
+        ClientNameDetailDto spouseName = personalInfo.getClientDetail().getSpouseName();
+        if (spouseName != null) {
+            spouseName.setNames(ClientRules.getNameSequence());
+            actionForm.setSpouseName(spouseName);
+        }
+        actionForm.setSpouseName(spouseName);
+        actionForm.setCustomFields(new ArrayList<CustomFieldDto>());
+
         SessionUtils.removeThenSetAttribute(Constants.BUSINESS_KEY, client, request);
 
         return mapping.findForward(ActionForwards.editPersonalInfo_success.toString());
@@ -597,13 +670,10 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
                                                  @SuppressWarnings("unused") HttpServletResponse httpservletresponse) throws Exception {
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
 
-        String governmentId = actionForm.getGovernmentId();
         String dateOfBirth = actionForm.getDateOfBirth();
-        String clientName = actionForm.getClientName().getDisplayName();
         actionForm.setAge(calculateAge(DateUtils.getDateAsSentFromBrowser(dateOfBirth)));
 
-        ClientDetailDto clientDetailDto = new ClientDetailDto(governmentId, dateOfBirth, clientName);
-        ClientRulesDto clientRules = this.customerServiceFacade.retrieveClientDetailsForPreviewingEditOfPersonalInfo(clientDetailDto);
+        ClientRulesDto clientRules = this.clientServiceFacade.retrieveClientDetailsForPreviewingEditOfPersonalInfo();
 
         boolean isFamilyDetailsRequired = clientRules.isFamilyDetailsRequired();
         SessionUtils.setAttribute(ClientConstants.ARE_FAMILY_DETAILS_REQUIRED, isFamilyDetailsRequired, request);
@@ -614,6 +684,17 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
             SessionUtils.setAttribute(ClientConstants.ARE_FAMILY_DETAILS_MANDATORY, isSpouseFatherInformationMandatory(), request);
             SessionUtils.setAttribute(ClientConstants.ARE_FAMILY_DETAILS_HIDDEN, isSpouseFatherInformationHidden(), request);
         }
+
+        ClientNameDetailDto clientName = actionForm.getClientName();
+        clientName.setNames(ClientRules.getNameSequence());
+        actionForm.setClientName(clientName);
+
+        ClientNameDetailDto spouseName = actionForm.getSpouseName();
+        if (spouseName != null) {
+            spouseName.setNames(ClientRules.getNameSequence());
+            actionForm.setSpouseName(spouseName);
+        }
+
         return mapping.findForward(ActionForwards.previewEditPersonalInfo_success.toString());
     }
 
@@ -637,15 +718,43 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
     @CloseSession
     @TransactionDemarcate(validateAndResetToken = true)
     public ActionForward updatePersonalInfo(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-                                            @SuppressWarnings("unused") HttpServletResponse response) throws ApplicationException {
+                                            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
 
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
         ClientBO clientInSession = getClientFromSession(request);
         Integer oldClientVersionNumber = clientInSession.getVersionNo();
         Integer customerId = clientInSession.getCustomerId();
-        UserContext userContext = getUserContext(request);
 
-        this.customerServiceFacade.updateClientPersonalInfo(userContext, oldClientVersionNumber, customerId, actionForm);
+        List<CustomFieldDto> customFields = new ArrayList<CustomFieldDto>();
+
+        AddressDto address = null;
+        if (actionForm.getAddress() != null) {
+            address = Address.toDto(actionForm.getAddress());
+        }
+
+        ClientNameDetailDto spouseFather = null;
+        if (!ClientRules.isFamilyDetailsRequired()) {
+            spouseFather = actionForm.getSpouseName();
+        }
+
+        InputStream picture = null;
+        if (actionForm.getPicture() != null && StringUtils.isNotBlank(actionForm.getPicture().getFileName())) {
+            picture = actionForm.getCustomerPicture();
+        }
+
+        ClientNameDetailDto clientNameDetails = actionForm.getClientName();
+        ClientPersonalDetailDto clientDetail = actionForm.getClientDetailView();
+
+        String governmentId = actionForm.getGovernmentId();
+        String clientDisplayName = actionForm.getClientName().getDisplayName();
+
+        String dateOfBirth = actionForm.getDateOfBirth();
+
+        ClientPersonalInfoUpdate personalInfo = new ClientPersonalInfoUpdate(customerId, oldClientVersionNumber,
+                customFields, address, clientDetail, clientNameDetails, spouseFather, picture, governmentId,
+                clientDisplayName, dateOfBirth);
+
+        this.clientServiceFacade.updateClientPersonalInfo(personalInfo);
 
         return mapping.findForward(ActionForwards.updatePersonalInfo_success.toString());
     }
@@ -656,14 +765,16 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
         actionForm.clearMostButNotAllFieldsOnActionForm();
         ClientBO clientFromSession = getClientFromSession(request);
-        UserContext userContext = getUserContext(request);
 
-        ClientFamilyInfoDto clientFamilyInfo = this.customerServiceFacade.retrieveFamilyInfoForEdit(clientFromSession.getGlobalCustNum(), userContext);
+        ClientFamilyInfoDto clientFamilyInfo = this.clientServiceFacade.retrieveFamilyInfoForEdit(clientFromSession.getGlobalCustNum());
 
         SessionUtils.setCollectionAttribute(ClientConstants.LIVING_STATUS_ENTITY, clientFamilyInfo.getClientDropdowns().getLivingStatus(), request);
         SessionUtils.setCollectionAttribute(ClientConstants.GENDER_ENTITY, clientFamilyInfo.getClientDropdowns().getGenders(), request);
-        SessionUtils.setCollectionAttribute(ClientConstants.SPOUSE_FATHER_ENTITY, clientFamilyInfo.getClientDropdowns().getSpouseFather(), request);
-        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, clientFamilyInfo.getCustomFieldViews(), request);
+        SessionUtils.setCollectionAttribute(CustomerConstants.CUSTOM_FIELDS_LIST, new ArrayList<CustomFieldDto>(), request);
+
+        UserContext userContext = getUserContext(request);
+        List<SpouseFatherLookupEntity> spouseFather = new MasterPersistence().retrieveMasterEntities(SpouseFatherLookupEntity.class, userContext.getLocaleId());
+        SessionUtils.setCollectionAttribute(ClientConstants.SPOUSE_FATHER_ENTITY, spouseFather, request);
 
         SessionUtils.setAttribute(ClientConstants.ARE_FAMILY_DETAILS_MANDATORY, isFamilyDetailsMandatory(), request);
 
@@ -672,7 +783,6 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         actionForm.setLoanOfficerId(clientFamilyInfo.getCustomerDetail().getLoanOfficerIdAsString());
         actionForm.setGlobalCustNum(clientFamilyInfo.getCustomerDetail().getGlobalCustNum());
         actionForm.setExternalId(clientFamilyInfo.getCustomerDetail().getExternalId());
-        actionForm.setAddress(clientFamilyInfo.getCustomerDetail().getAddress());
 
         // client specific
         actionForm.setGovernmentId(clientFamilyInfo.getClientDetail().getGovernmentId());
@@ -682,7 +792,7 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         actionForm.setClientDetailView(clientFamilyInfo.getClientDetail().getCustomerDetail());
         actionForm.setClientName(clientFamilyInfo.getClientDetail().getClientName());
         actionForm.setSpouseName(clientFamilyInfo.getClientDetail().getSpouseName());
-        actionForm.setCustomFields(clientFamilyInfo.getCustomFieldViews());
+        actionForm.setCustomFields(new ArrayList<CustomFieldDto>());
 
         // client family specific
         int familyMemberCount = 0;
@@ -723,6 +833,7 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         }
 
         ClientBO client = this.customerDao.findClientBySystemId(clientFromSession.getGlobalCustNum());
+        actionForm.setAddress(client.getAddress());
         SessionUtils.removeThenSetAttribute(Constants.BUSINESS_KEY, client, request);
 
         return mapping.findForward(ActionForwards.editFamilyInfo_success.toString());
@@ -744,11 +855,13 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
                                           @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
 
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
-        UserContext userContext = getUserContext(request);
         ClientBO clientInSession = getClientFromSession(request);
 
         Integer customerId = clientInSession.getCustomerId();
-        this.customerServiceFacade.updateFamilyInfo(customerId, userContext, clientInSession.getVersionNo(), actionForm);
+
+        ClientFamilyInfoUpdate clientFamilyInfoUpdate = new ClientFamilyInfoUpdate(customerId, clientInSession.getVersionNo(),
+                actionForm.getFamilyPrimaryKey(), actionForm.getFamilyNames(), actionForm.getFamilyDetails());
+        this.clientServiceFacade.updateFamilyInfo(clientFamilyInfoUpdate);
 
         actionForm.setFamilyDateOfBirth();
         actionForm.constructFamilyDetails();
@@ -763,12 +876,11 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
 
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
         actionForm.clearMostButNotAllFieldsOnActionForm();
-        UserContext userContext = getUserContext(request);
         ClientBO clientFromSession = getClientFromSession(request);
 
         String clientSystemId = clientFromSession.getGlobalCustNum();
 
-        ClientMfiInfoDto mfiInfoDto = this.customerServiceFacade.retrieveMfiInfoForEdit(clientSystemId, userContext);
+        ClientMfiInfoDto mfiInfoDto = this.clientServiceFacade.retrieveMfiInfoForEdit(clientSystemId);
 
         SessionUtils.setAttribute(GroupConstants.CENTER_HIERARCHY_EXIST, ClientRules.getCenterHierarchyExists(), request);
         SessionUtils.setCollectionAttribute(CustomerConstants.LOAN_OFFICER_LIST, mfiInfoDto.getLoanOfficersList(), request);
@@ -811,16 +923,62 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
     public ActionForward updateMfiInfo(ActionMapping mapping, ActionForm form, HttpServletRequest request,
                                        @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
 
-        UserContext userContext = getUserContext(request);
         ClientCustActionForm actionForm = (ClientCustActionForm) form;
         ClientBO clientInSession = getClientFromSession(request);
 
         Integer clientId = clientInSession.getCustomerId();
         Integer oldVersionNumber = clientInSession.getVersionNo();
 
-        this.customerServiceFacade.updateClientMfiInfo(clientId, oldVersionNumber, userContext, actionForm);
+        boolean trained = false;
+        if (trainedValue(actionForm) != null && trainedValue(actionForm).equals(YesNoFlag.YES.getValue())) {
+            trained = true;
+        }
+
+        DateTime trainedDate = null;
+        try {
+            java.sql.Date inputDate = trainedDate(actionForm);
+            if (inputDate != null) {
+                trainedDate = new DateTime(trainedDate(actionForm));
+            }
+        } catch (InvalidDateException e) {
+            throw new CustomerException(ClientConstants.TRAINED_DATE_MANDATORY);
+        }
+
+        Short personnelId = Short.valueOf("-1");
+        if (groupFlagValue(actionForm).equals(YesNoFlag.NO.getValue())) {
+            if (actionForm.getLoanOfficerIdValue() != null) {
+                personnelId = actionForm.getLoanOfficerIdValue();
+            }
+        } else if (groupFlagValue(actionForm).equals(YesNoFlag.YES.getValue())) {
+            // TODO for an urgent fix this reads client to get personnelId.
+            // Client is read again in updateClientMfiInfo. Refactor to only read in
+            // updateClientMfiInfo.
+            ClientBO client = (ClientBO) this.customerDao.findCustomerById(clientId);
+            personnelId = client.getPersonnel().getPersonnelId();
+        }
+
+        ClientMfiInfoUpdate clientMfiInfoUpdate = new ClientMfiInfoUpdate(clientId, oldVersionNumber, personnelId,
+                externalId(actionForm), trained, trainedDate);
+
+        this.clientServiceFacade.updateClientMfiInfo(clientMfiInfoUpdate);
 
         return mapping.findForward(ActionForwards.updateMfiInfo_success.toString());
+    }
+
+    private Date trainedDate(ClientCustActionForm actionForm) throws InvalidDateException {
+        return DateUtils.getDateAsSentFromBrowser(actionForm.getTrainedDate());
+    }
+
+    private Short trainedValue(ClientCustActionForm actionForm) {
+        return actionForm.getTrainedValue();
+    }
+
+    private String externalId(ClientCustActionForm actionForm) {
+        return actionForm.getExternalId();
+    }
+
+    private Short groupFlagValue(ClientCustActionForm actionForm) {
+        return actionForm.getGroupFlagValue();
     }
 
     private int calculateAge(Date date) {
@@ -837,23 +995,20 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
         return (List<SavingsDetailDto>) SessionUtils.getAttribute(ClientConstants.SAVINGS_OFFERING_LIST, request);
     }
 
-    @SuppressWarnings({"unchecked"})
     private boolean isSpouseFatherInformationMandatory() {
         return FieldConfig.getInstance().isFieldManadatory("Client." + HiddenMandatoryFieldNamesConstants.SPOUSE_FATHER_INFORMATION);
     }
 
-    @SuppressWarnings({"unchecked"})
     private boolean isSpouseFatherInformationHidden() {
         return FieldConfig.getInstance().isFieldHidden("Client." + HiddenMandatoryFieldNamesConstants.SPOUSE_FATHER_INFORMATION);
     }
 
-    @SuppressWarnings({"unchecked"})
     private boolean isFamilyDetailsMandatory() {
         return FieldConfig.getInstance().isFieldManadatory("Client." + HiddenMandatoryFieldNamesConstants.FAMILY_DETAILS);
     }
 
     @Override
-    public ActionForward captureQuestionResponses(ActionMapping mapping, ActionForm form, HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public ActionForward captureQuestionResponses(ActionMapping mapping, ActionForm form, HttpServletRequest request, @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         request.setAttribute(METHODCALLED, "captureQuestionResponses");
         ActionErrors errors = createClientQuestionnaire.validateResponses(request, (ClientCustActionForm) form);
         if (errors != null && !errors.isEmpty()) {
@@ -864,7 +1019,7 @@ public class ClientCustAction extends CustAction implements QuestionnaireAction 
     }
 
     @Override
-    public ActionForward editQuestionResponses(ActionMapping mapping, ActionForm form, HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public ActionForward editQuestionResponses(ActionMapping mapping, ActionForm form, HttpServletRequest request, @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         request.setAttribute(METHODCALLED, "editQuestionResponses");
         return createClientQuestionnaire.editResponses(mapping, request, (ClientCustActionForm) form);
     }

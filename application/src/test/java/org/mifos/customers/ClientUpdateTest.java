@@ -29,9 +29,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mifos.application.holiday.persistence.HolidayDao;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
-import org.mifos.application.servicefacade.ClientFamilyInfoUpdate;
-import org.mifos.application.servicefacade.ClientMfiInfoUpdate;
-import org.mifos.application.servicefacade.ClientPersonalInfoUpdate;
 import org.mifos.core.MifosRuntimeException;
 import org.mifos.customers.business.service.CustomerService;
 import org.mifos.customers.business.service.CustomerServiceImpl;
@@ -46,6 +43,9 @@ import org.mifos.customers.util.helpers.CustomerConstants;
 import org.mifos.domain.builders.ClientFamilyInfoUpdateBuilder;
 import org.mifos.domain.builders.ClientMfiInfoUpdateBuilder;
 import org.mifos.domain.builders.ClientPersonalInfoUpdateBuilder;
+import org.mifos.dto.domain.ClientFamilyInfoUpdate;
+import org.mifos.dto.domain.ClientMfiInfoUpdate;
+import org.mifos.dto.domain.ClientPersonalInfoUpdate;
 import org.mifos.framework.TestUtils;
 import org.mifos.framework.hibernate.helper.HibernateTransactionHelper;
 import org.mifos.framework.util.helpers.Constants;
@@ -218,25 +218,6 @@ public class ClientUpdateTest {
         InOrder inOrder = inOrder(hibernateTransactionHelper, mockedClient);
         inOrder.verify(mockedClient).updateDetails(userContext);
         inOrder.verify(hibernateTransactionHelper).beginAuditLoggingFor(mockedClient);
-    }
-
-    @Test
-    public void mandatoryAdditionalFieldsAreUpdatedForClientPersonalInfo() throws Exception {
-
-        // setup
-        UserContext userContext = TestUtils.makeUser();
-        ClientPersonalInfoUpdate clientPersonalInfoUpdate = new ClientPersonalInfoUpdateBuilder().build();
-
-        // stubbing
-        when(customerDao.findCustomerById(clientPersonalInfoUpdate.getCustomerId())).thenReturn(mockedClient);
-        when(customerDao.retrieveCustomFieldEntitiesForClient()).thenReturn(new ArrayList<CustomFieldDefinitionEntity>());
-
-        // exercise test
-        customerService.updateClientPersonalInfo(userContext, clientPersonalInfoUpdate);
-
-        // verification
-        verify(mockedClient).updateCustomFields(clientPersonalInfoUpdate.getClientCustomFields());
-        verify(mockedClient).validateMandatoryCustomFields(new ArrayList<CustomFieldDefinitionEntity>());
     }
 
     @Test

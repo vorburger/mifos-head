@@ -54,7 +54,7 @@ import org.mifos.accounts.productdefinition.util.helpers.ApplicableTo;
 import org.mifos.accounts.productdefinition.util.helpers.ProductDefinitionConstants;
 import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.application.meeting.business.MeetingDetailsEntity;
-import org.mifos.application.meeting.util.helpers.MeetingHelper;
+import org.mifos.config.AccountingRules;
 import org.mifos.framework.exceptions.PageExpiredException;
 import org.mifos.framework.util.helpers.Constants;
 import org.mifos.framework.util.helpers.Flow;
@@ -255,6 +255,7 @@ public class LoanPrdActionFormTest {
 
         final FeeDto feeDto = Mockito.mock(FeeDto.class);
         loanPrdActionForm = new LoanPrdActionForm() {
+            @Override
             FeeDto getFeeDto(HttpServletRequest request, FeeBO fee) {
                 return feeDto;
             }
@@ -344,6 +345,31 @@ public class LoanPrdActionFormTest {
         Mockito.verifyZeroInteractions(errors);
         Mockito.reset(errors);
     }
+
+    @Test
+    public void shouldAbleToRetrieveMaxAndMinValues() {
+        Assert.assertNotNull(loanPrdActionForm.getMaxCashFlowThreshold());
+        Assert.assertNotNull(loanPrdActionForm.getMinCashFlowThreshold());
+        Assert.assertNotNull(loanPrdActionForm.getMaxIndebtednessRatio());
+        Assert.assertNotNull(loanPrdActionForm.getMinIndebtednessRatio());
+        Assert.assertNotNull(loanPrdActionForm.getMaxRepaymentCapacity());
+        Assert.assertNotNull(loanPrdActionForm.getMinRepaymentCapacity());
+    }
+
+
+    @Test
+    public void shouldReturnConsistentValuesForPropertiesWhichHaveBothValuesAndStringRepresentationFunctions() {
+        String cashflowValue = "100";
+        loanPrdActionForm.setCashFlowThreshold(cashflowValue);
+        Assert.assertEquals(cashflowValue, loanPrdActionForm.getCashFlowThreshold());
+        Assert.assertEquals(100d,loanPrdActionForm.getCashFlowThresholdValue());
+
+        String emptyValue = " ";
+        loanPrdActionForm.setCashFlowThreshold(emptyValue);
+        Assert.assertEquals(emptyValue, loanPrdActionForm.getCashFlowThreshold());
+        Assert.assertEquals(null,loanPrdActionForm.getCashFlowThresholdValue());
+    }
+
 
     private class ActionMessageMatcher extends TypeSafeMatcher<ActionMessage> {
         private String errorCode;

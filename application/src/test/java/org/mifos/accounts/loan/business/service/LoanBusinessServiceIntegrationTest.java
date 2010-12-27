@@ -30,25 +30,23 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import junit.framework.Assert;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mifos.accounts.business.AccountActionDateEntity;
 import org.mifos.accounts.business.AccountBO;
 import org.mifos.accounts.business.service.AccountBusinessService;
-import org.mifos.accounts.exceptions.AccountException;
-import org.mifos.accounts.loan.business.LoanActivityDto;
 import org.mifos.accounts.loan.business.LoanBO;
+import org.mifos.accounts.loan.business.ScheduleCalculatorAdaptor;
 import org.mifos.accounts.loan.persistance.LoanPersistence;
 import org.mifos.accounts.persistence.AccountPersistence;
 import org.mifos.accounts.productdefinition.business.LoanOfferingBO;
 import org.mifos.accounts.util.helpers.AccountState;
 import org.mifos.accounts.util.helpers.PaymentData;
+import org.mifos.application.holiday.business.service.HolidayService;
 import org.mifos.application.meeting.business.MeetingBO;
+import org.mifos.application.servicefacade.DependencyInjectedServiceLocator;
 import org.mifos.config.business.service.ConfigurationBusinessService;
 import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.client.business.ClientBO;
@@ -56,11 +54,6 @@ import org.mifos.customers.group.business.GroupBO;
 import org.mifos.customers.util.helpers.CustomerStatus;
 import org.mifos.framework.MifosIntegrationTestCase;
 import org.mifos.framework.TestUtils;
-import org.mifos.framework.exceptions.ApplicationException;
-import org.mifos.framework.exceptions.PersistenceException;
-import org.mifos.framework.exceptions.SystemException;
-import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
-import org.mifos.framework.util.helpers.Money;
 import org.mifos.framework.util.helpers.TestObjectFactory;
 
 public class LoanBusinessServiceIntegrationTest extends MifosIntegrationTestCase {
@@ -77,31 +70,13 @@ public class LoanBusinessServiceIntegrationTest extends MifosIntegrationTestCase
 
     @Before
     public void setUp() throws Exception {
-        loanBusinessService = new LoanBusinessService();
+        loanBusinessService = DependencyInjectedServiceLocator.locateLoanBusinessService();
         accountPersistence = new AccountPersistence();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        try {
-            accountBO = (AccountBO) StaticHibernateUtil.getSessionTL().get(AccountBO.class, accountBO.getAccountId());
-            group = (CustomerBO) StaticHibernateUtil.getSessionTL().get(CustomerBO.class, group.getCustomerId());
-            center = (CustomerBO) StaticHibernateUtil.getSessionTL().get(CustomerBO.class, center.getCustomerId());
-            accountBO = null;
-            group = null;
-            center = null;
-        } catch (Exception e) {
-            // TODO Whoops, cleanup didnt work, reset db
-
-        }
-
-        StaticHibernateUtil.flushSession();
     }
 
     @Test
     public void testFindBySystemId() throws Exception {
         accountBO = getLoanAccount();
-        loanBusinessService = new LoanBusinessService();
         LoanBO loanBO = loanBusinessService.findBySystemId(accountBO.getGlobalAccountNum());
         Assert.assertEquals(loanBO.getGlobalAccountNum(), accountBO.getGlobalAccountNum());
         Assert.assertEquals(loanBO.getAccountId(), accountBO.getAccountId());
@@ -110,7 +85,6 @@ public class LoanBusinessServiceIntegrationTest extends MifosIntegrationTestCase
     @Test
     public void testFindIndividualLoans() throws Exception {
         accountBO = getLoanAccount();
-        loanBusinessService = new LoanBusinessService();
         List<LoanBO> listLoanBO = loanBusinessService.findIndividualLoans(accountBO.getAccountId().toString());
         Assert.assertEquals(0, listLoanBO.size());
     }
@@ -118,7 +92,6 @@ public class LoanBusinessServiceIntegrationTest extends MifosIntegrationTestCase
     @Test
     public void testGetLoanAccountsActiveInGoodBadStanding() throws Exception {
         accountBO = getLoanAccount();
-        loanBusinessService = new LoanBusinessService();
         List<LoanBO> loanBO = loanBusinessService.getLoanAccountsActiveInGoodBadStanding(accountBO.getCustomer()
                 .getCustomerId());
         Assert.assertEquals(Short.valueOf("1"), loanBO.get(0).getAccountType().getAccountTypeId());
@@ -127,86 +100,9 @@ public class LoanBusinessServiceIntegrationTest extends MifosIntegrationTestCase
     }
 
     @Test
-    public void testGetRecentActivityView() throws SystemException, NumberFormatException, ApplicationException {
-        Date startDate = new Date(System.currentTimeMillis());
-        MeetingBO meeting = TestObjectFactory.createMeeting(TestObjectFactory.getTypicalMeeting());
-        center = TestObjectFactory.createWeeklyFeeCenter(this.getClass().getSimpleName() + "_Center_Active", meeting);
-        group = TestObjectFactory.createWeeklyFeeGroupUnderCenter(this.getClass().getSimpleName() + "_Group",
-                CustomerStatus.GROUP_ACTIVE, center);
-        LoanOfferingBO loanOffering = TestObjectFactory.createLoanOffering(startDate, meeting);
-        accountBO = TestObjectFactory.createLoanAccount("42423142341", group,
-                AccountState.LOAN_ACTIVE_IN_GOOD_STANDING, startDate, loanOffering);
-        StaticHibernateUtil.flushSession();
-
-        applyPayments();
-
-        accountBO = accountPersistence.getAccount(accountBO.getAccountId());
-        List<LoanActivityDto> loanRecentActivityView = loanBusinessService.getRecentActivityView(accountBO
-                .getGlobalAccountNum());
-
-        Assert.assertEquals(3, loanRecentActivityView.size());
-        Assert.assertNotNull(loanRecentActivityView);
-    }
-
-    private void applyPayments() throws PersistenceException, AccountException {
-        Set<AccountActionDateEntity> actionDates = accountBO.getAccountActionDates();
-        // Is this always true or does it depend on System.currentTimeMillis?
-        // Assert.assertEquals(6, actionDates.size());
-        for (AccountActionDateEntity actionDate : actionDates) {
-            Assert.assertNotNull(actionDate);
-            accountBO = accountPersistence.getAccount(accountBO.getAccountId());
-            PaymentData paymentData = createPaymentViewObject(accountBO);
-            accountBO.applyPaymentWithPersist(paymentData);
-            TestObjectFactory.updateObject(accountBO);
-        }
-    }
-
-    @Test
-    public void testGetAllActivityView() throws SystemException, NumberFormatException, ApplicationException {
-        Date startDate = new Date(System.currentTimeMillis());
-        MeetingBO meeting = TestObjectFactory.createMeeting(TestObjectFactory.getTypicalMeeting());
-        center = TestObjectFactory.createWeeklyFeeCenter(this.getClass().getSimpleName() + "_Center_Active", meeting);
-        group = TestObjectFactory.createWeeklyFeeGroupUnderCenter(this.getClass().getSimpleName() + "_Group",
-                CustomerStatus.GROUP_ACTIVE, center);
-        LoanOfferingBO loanOffering = TestObjectFactory.createLoanOffering(startDate, meeting);
-        accountBO = TestObjectFactory.createLoanAccount("42423142341", group,
-                AccountState.LOAN_ACTIVE_IN_GOOD_STANDING, startDate, loanOffering);
-        StaticHibernateUtil.flushSession();
-
-        applyPayments();
-        StaticHibernateUtil.flushAndClearSession();
-
-        accountBO = accountPersistence.getAccount(accountBO.getAccountId());
-        List<LoanActivityDto> loanAllActivityView = loanBusinessService.getAllActivityView(accountBO
-                .getGlobalAccountNum());
-        Assert.assertNotNull(loanAllActivityView);
-        Assert.assertEquals(6, loanAllActivityView.size());
-
-        // get first loan activity created which is last in the list because
-        // hibernate is configured order-by "ID desc"
-        LoanActivityDto view = loanAllActivityView.get(5);
-        Assert.assertNotNull(view.getActivity());
-        Assert.assertNotNull(view.getUserPrefferedDate());
-        Assert.assertNotNull(view.getActionDate().getTime());
-        Assert.assertEquals(new Money(getCurrency(), "100.0"), view.getFees());
-        Assert.assertNotNull(view.getId());
-        Assert.assertEquals(new Money(getCurrency(), "12.0"), view.getInterest());
-        Assert.assertNull(view.getLocale());
-        Assert.assertEquals(new Money(getCurrency(), "0.0"), view.getPenalty());
-        Assert.assertEquals(new Money(getCurrency(), "100.0"), view.getPrincipal());
-        Assert.assertEquals(new Money(getCurrency(), "212.0"), view.getTotal());
-        Assert.assertNotNull(view.getTimeStamp());
-        Assert.assertEquals(new Money(getCurrency(), "-100.0"), view.getRunningBalanceFees());
-        Assert.assertEquals(new Money(getCurrency(), "24.0"), view.getRunningBalanceInterest());
-        Assert.assertEquals(new Money(getCurrency(), "0.0"), view.getRunningBalancePenalty());
-        Assert.assertEquals(new Money(getCurrency(), "200.0"), view.getRunningBalancePrinciple());
-    }
-
-    @Test
     public void testGetAllLoanAccounts() throws Exception {
         int initialLoanAccountsSize = loanBusinessService.getAllLoanAccounts().size();
         accountBO = getLoanAccount();
-        loanBusinessService = new LoanBusinessService();
         List<LoanBO> loanAccounts = loanBusinessService.getAllLoanAccounts();
         Assert.assertNotNull(loanAccounts);
         Assert.assertEquals(initialLoanAccountsSize+1, loanAccounts.size());
@@ -255,11 +151,9 @@ public class LoanBusinessServiceIntegrationTest extends MifosIntegrationTestCase
                 accountBusinessServiceMock);
 
         Assert.assertEquals(asList(loanMock1), new LoanBusinessService(new LoanPersistence(), configServiceMock,
-                accountBusinessServiceMock).getActiveLoansForAllClientsAssociatedWithGroupLoan(groupLoanMock));
+                accountBusinessServiceMock, createMock(HolidayService.class), createMock(ScheduleCalculatorAdaptor.class)).getActiveLoansForAllClientsAssociatedWithGroupLoan(groupLoanMock));
 
         verify(groupMock, clientMock, loanMock1, loanMock2, groupLoanMock, configServiceMock,
                 accountBusinessServiceMock);
-
     }
-
 }

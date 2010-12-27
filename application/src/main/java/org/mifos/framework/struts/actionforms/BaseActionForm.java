@@ -35,6 +35,7 @@ import org.apache.struts.validator.ValidatorActionForm;
 import org.mifos.application.admin.servicefacade.InvalidDateException;
 import org.mifos.application.master.MessageLookup;
 import org.mifos.application.master.business.MifosCurrency;
+import org.mifos.config.AccountingRules;
 import org.mifos.dto.domain.CustomFieldDto;
 import org.mifos.framework.components.fieldConfiguration.business.FieldConfigurationEntity;
 import org.mifos.framework.components.fieldConfiguration.util.helpers.FieldConfigurationConstant;
@@ -94,13 +95,6 @@ public class BaseActionForm extends ValidatorActionForm {
         return error.toLocalizedMessage(locale, null);
     }
 
-    protected DoubleConversionResult parseDoubleForInterest(String doubleString) {
-        return new LocalizationConverter().parseDoubleForInterest(doubleString);
-    }
-
-    protected DoubleConversionResult parseDoubleForCashFlowThreshold(String doubleString){
-        return new LocalizationConverter().parseDoubleForCashFlowThreshold(doubleString);
-    }
 
     protected Short getShortValue(String str) {
         return StringUtils.isNotBlank(str) ? Short.valueOf(str) : null;
@@ -216,6 +210,10 @@ public class BaseActionForm extends ValidatorActionForm {
         ResourceBundle resources = ResourceBundle.getBundle(propertyFile, locale);
         String errorText = resources.getString(key);
         return errorText;
+    }
+
+    protected DoubleConversionResult parseDoubleForInterest(String doubleString) {
+        return new LocalizationConverter().parseDoubleForInterest(doubleString);
     }
 
 }

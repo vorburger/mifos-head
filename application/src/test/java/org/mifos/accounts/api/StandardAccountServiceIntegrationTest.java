@@ -20,19 +20,13 @@
 
 package org.mifos.accounts.api;
 
-import java.math.BigDecimal;
-import java.util.List;
-
 import junit.framework.Assert;
-
 import org.joda.time.LocalDate;
 import org.junit.Before;
 import org.junit.Test;
 import org.mifos.accounts.AccountIntegrationTestCase;
-import org.mifos.accounts.acceptedpaymenttype.persistence.AcceptedPaymentTypePersistence;
-import org.mifos.accounts.loan.business.service.LoanBusinessService;
-import org.mifos.accounts.loan.persistance.LoanPersistence;
-import org.mifos.accounts.persistence.AccountPersistence;
+import org.mifos.accounts.business.AccountPaymentEntity;
+import org.mifos.accounts.business.AccountTrxnEntity;
 import org.mifos.accounts.productdefinition.business.SavingsOfferingBO;
 import org.mifos.accounts.productdefinition.util.helpers.ApplicableTo;
 import org.mifos.accounts.productdefinition.util.helpers.InterestCalcType;
@@ -40,22 +34,28 @@ import org.mifos.accounts.productdefinition.util.helpers.PrdStatus;
 import org.mifos.accounts.productdefinition.util.helpers.RecommendedAmountUnit;
 import org.mifos.accounts.productdefinition.util.helpers.SavingsType;
 import org.mifos.accounts.savings.business.SavingsBO;
-import org.mifos.accounts.savings.persistence.GenericDaoHibernate;
 import org.mifos.accounts.util.helpers.AccountState;
 import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.application.meeting.util.helpers.MeetingType;
 import org.mifos.application.meeting.util.helpers.RecurrenceType;
-import org.mifos.customers.personnel.persistence.PersonnelDaoHibernate;
+import org.mifos.application.servicefacade.DependencyInjectedServiceLocator;
+import org.mifos.dto.domain.AccountPaymentParametersDto;
+import org.mifos.dto.domain.AccountReferenceDto;
+import org.mifos.dto.domain.CustomerDto;
+import org.mifos.dto.domain.PaymentTypeDto;
+import org.mifos.dto.domain.UserReferenceDto;
 import org.mifos.framework.TestUtils;
 import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
 import org.mifos.framework.util.DateTimeService;
 import org.mifos.framework.util.helpers.TestObjectFactory;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 public class StandardAccountServiceIntegrationTest extends AccountIntegrationTestCase {
 
-    private StandardAccountService standardAccountService;
-    private List<PaymentTypeDto> paymentTypeDtos;
+    private AccountService standardAccountService;
     private PaymentTypeDto defaultPaymentType;
 
     @Override
@@ -63,40 +63,108 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
     public void setUp() throws Exception {
         super.setUp();
         StaticHibernateUtil.startTransaction();
-        standardAccountService = new StandardAccountService(new AccountPersistence(), new LoanPersistence(),
-                new AcceptedPaymentTypePersistence(), new PersonnelDaoHibernate(new GenericDaoHibernate()), new LoanBusinessService());
-        paymentTypeDtos = standardAccountService.getLoanPaymentTypes();
-        defaultPaymentType = paymentTypeDtos.get(0);
+        standardAccountService = DependencyInjectedServiceLocator.locateAccountService();
+        defaultPaymentType = standardAccountService.getLoanPaymentTypes().get(0);
     }
 
 
     @Test
-    public void testMakePayment() throws Exception {
-        String paymentAmount = "700";
-        standardAccountService.setAccountPersistence(new AccountPersistence());
+    public void testMakePaymentForLoanAccount() throws Exception {
+        String payemntAmount = "700";
+        CustomerDto clientDto = new CustomerDto();
+        clientDto.setCustomerId(client.getCustomerId());
+        LocalDate paymentDate = new LocalDate();
+        LocalDate receiptDate = new LocalDate().minusDays(3);
+        String receiptNumber = "AA/03/UX-9Q";
 
-        AccountPaymentParametersDto accountPaymentParametersDto = new AccountPaymentParametersDto(new UserReferenceDto(
+        AccountPaymentParametersDto loanPayment = new AccountPaymentParametersDto(new UserReferenceDto(
                 groupLoan.getPersonnel().getPersonnelId()), new AccountReferenceDto(groupLoan.getAccountId()),
-                new BigDecimal(paymentAmount), new LocalDate(), defaultPaymentType, "");
-        standardAccountService.makePayment(accountPaymentParametersDto);
+                new BigDecimal(payemntAmount), paymentDate, defaultPaymentType, "comment",receiptDate, receiptNumber,
+                clientDto);
+        standardAccountService.makePayment(loanPayment);
 
         TestObjectFactory.updateObject(groupLoan);
-        Assert.assertEquals("The amount returned for the payment should have been " + paymentAmount, Double
-                .parseDouble(paymentAmount), groupLoan.getLastPmntAmnt());
 
-        AccountReferenceDto accountRef = new AccountReferenceDto(groupLoan.getAccountId());
-        List<AccountPaymentParametersDto> payments = standardAccountService.lookupPayments(accountRef);
-        Assert.assertEquals("One payment retrieved", payments.size(), 1);
-        AccountPaymentParametersDto payment = payments.iterator().next();
-        Assert.assertEquals("Payment amount should be " + paymentAmount,
-                payment.getPaymentAmount().compareTo(new BigDecimal(paymentAmount)), 0);
+        Assert.assertEquals("The amount returned for the payment should have been " + payemntAmount, Double
+                .parseDouble(payemntAmount), groupLoan.getLastPmntAmnt());
 
+        Assert.assertEquals(1, groupLoan.getAccountPayments().size());
+        for (AccountPaymentEntity payment : groupLoan.getAccountPayments()) {
+
+            Assert.assertEquals(TestUtils.createMoney(payemntAmount), payment.getAmount());
+            Assert.assertEquals(paymentDate.toDateMidnight().toDate(), payment.getPaymentDate());
+            Assert.assertEquals(defaultPaymentType.getName(), payment.getPaymentType().getName());
+            Assert.assertEquals("comment", payment.getComment());
+            Assert.assertEquals(groupLoan, payment.getAccount());
+            Assert.assertEquals(groupLoan.getPersonnel(), payment.getCreatedByUser());
+            Assert.assertEquals(receiptDate.toDateMidnight().toDate(), payment.getReceiptDate());
+            Assert.assertEquals(receiptNumber, payment.getReceiptNumber());
+            Assert.assertNull(payment.getCheckNumber());
+            Assert.assertNull(payment.getBankName());
+            Assert.assertNull(payment.getVoucherNumber());
+            Assert.assertFalse(payment.isSavingsDeposit());
+            Assert.assertFalse(payment.isSavingsWithdrawal());
+            Assert.assertFalse(payment.isSavingsDepositOrWithdrawal());
+            Assert.assertEquals(4, payment.getAccountTrxns().size());
+
+            for (AccountTrxnEntity accountTrxn : payment.getAccountTrxns()) {
+                Assert.assertEquals(group.getCustomerId(), accountTrxn.getCustomer().getCustomerId());
+            }
+        }
+    }
+
+    @Test
+    public void testMakePaymentForSavingsAccountOnDeposit() throws Exception {
+        savingsBO = createClientSavingsAccount();
+        String deposit = "400";
+        CustomerDto clientDto = new CustomerDto();
+        clientDto.setCustomerId(client.getCustomerId());
+        //FIXME why one day in future payment is allowed
+        LocalDate paymentDate = new LocalDate().plusDays(1);
+        LocalDate receiptDate = new LocalDate().minusDays(3);
+        String receiptNumber = "AA/03/UX-9Q";
+
+        Assert.assertEquals(0, savingsBO.getAccountPayments().size());
+
+        AccountPaymentParametersDto depositPayment = new AccountPaymentParametersDto(new UserReferenceDto(savingsBO
+                .getPersonnel().getPersonnelId()), new AccountReferenceDto(savingsBO.getAccountId()), new BigDecimal(
+                deposit), paymentDate, defaultPaymentType, "comment", receiptDate, receiptNumber,
+                clientDto);
+        standardAccountService.makePayment(depositPayment);
+
+        TestObjectFactory.updateObject(savingsBO);
+
+        Assert.assertEquals("The amount returned for the payment should have been " + deposit, Double
+                .parseDouble(deposit), savingsBO.getLastPmntAmnt());
+
+        Assert.assertEquals(1, savingsBO.getAccountPayments().size());
+        for (AccountPaymentEntity payment : savingsBO.getAccountPayments()) {
+
+            Assert.assertEquals(TestUtils.createMoney(deposit), payment.getAmount());
+            Assert.assertEquals(1, payment.getAccountTrxns().size());
+            Assert.assertEquals(paymentDate.toDateMidnight().toDate(), payment.getPaymentDate());
+            Assert.assertEquals(defaultPaymentType.getName(), payment.getPaymentType().getName());
+            Assert.assertEquals("comment", payment.getComment());
+            Assert.assertEquals(savingsBO, payment.getAccount());
+            Assert.assertEquals(savingsBO.getPersonnel(), payment.getCreatedByUser());
+            Assert.assertEquals(receiptDate.toDateMidnight().toDate(), payment.getReceiptDate());
+            Assert.assertEquals(receiptNumber, payment.getReceiptNumber());
+            Assert.assertNull(payment.getCheckNumber());
+            Assert.assertNull(payment.getBankName());
+            Assert.assertNull(payment.getVoucherNumber());
+            Assert.assertTrue(payment.isSavingsDeposit());
+            Assert.assertFalse(payment.isSavingsWithdrawal());
+            Assert.assertTrue(payment.isSavingsDepositOrWithdrawal());
+
+            for (AccountTrxnEntity accountTrxn : payment.getAccountTrxns()) {
+                Assert.assertEquals(client.getCustomerId(), accountTrxn.getCustomer().getCustomerId());
+            }
+        }
     }
 
     @Test
     public void testValidateValidPayment() throws Exception {
         String paymentAmount = "10";
-        standardAccountService.setAccountPersistence(new AccountPersistence());
 
         AccountPaymentParametersDto accountPaymentParametersDto = new AccountPaymentParametersDto(new UserReferenceDto(
                 groupLoan.getPersonnel().getPersonnelId()), new AccountReferenceDto(groupLoan.getAccountId()),
@@ -109,7 +177,6 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
     @Test
     public void testValidatePaymentWithInvalidDate() throws Exception {
         String paymentAmount = "700";
-        standardAccountService.setAccountPersistence(new AccountPersistence());
 
         AccountPaymentParametersDto accountPaymentParametersDto = new AccountPaymentParametersDto(new UserReferenceDto(
                 groupLoan.getPersonnel().getPersonnelId()), new AccountReferenceDto(groupLoan.getAccountId()),
@@ -123,7 +190,6 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
     public void testMakePaymentComment() throws Exception {
         String paymentAmount = "700";
         String comment = "test comment";
-        standardAccountService.setAccountPersistence(new AccountPersistence());
 
         AccountPaymentParametersDto accountPaymentParametersDto = new AccountPaymentParametersDto(new UserReferenceDto(
                 groupLoan.getPersonnel().getPersonnelId()), new AccountReferenceDto(groupLoan.getAccountId()),
@@ -140,9 +206,6 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
         groupLoan.setExternalId(externalId);
         groupLoan.save();
         StaticHibernateUtil.flushSession();
-
-        standardAccountService.setAccountPersistence(new AccountPersistence());
-        standardAccountService.setLoanPersistence(new LoanPersistence());
 
         AccountReferenceDto accountReferenceDto = standardAccountService
                 .lookupLoanAccountReferenceFromExternalId(externalId);
@@ -190,7 +253,7 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
 
     @Test
     public void testLookupSavingsFromClientGovernmentIdAndSavingsProductShortName() throws Exception {
-        savingsBO = createSavingsAccount();
+        savingsBO = createClientSavingsAccount();
         String clientGovernmentId = client.getGovernmentId();
         String savingsProductShortName = savingsBO.getSavingsOffering().getPrdOfferingShortName();
         AccountReferenceDto account = standardAccountService
@@ -201,7 +264,7 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
 
     @Test
     public void testFailureOfLookupSavingsFromClientGovernmentIdAndSavingsProductShortName() throws Exception {
-        savingsBO = createSavingsAccount();
+        savingsBO = createClientSavingsAccount();
         try {
             standardAccountService.lookupSavingsAccountReferenceFromClientGovernmentIdAndSavingsProductShortName(client
                     .getGovernmentId(), "W");
@@ -231,7 +294,6 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
     @Test
     public void testValidatePaymentWithInvalidPaymentType() throws Exception {
         String paymentAmount = "700";
-        standardAccountService.setAccountPersistence(new AccountPersistence());
         PaymentTypeDto invalidPaymentType = new PaymentTypeDto((short) -1, "pseudo payment type! Not cash, check, etc.");
 
         AccountPaymentParametersDto accountPaymentParametersDto = new AccountPaymentParametersDto(new UserReferenceDto(
@@ -245,7 +307,6 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
     @Test
     public void testValidatePaymentWithInvalidLargePaymentAmount() throws Exception {
         String paymentAmount = "700000";
-        standardAccountService.setAccountPersistence(new AccountPersistence());
 
         AccountPaymentParametersDto accountPaymentParametersDto = new AccountPaymentParametersDto(new UserReferenceDto(
                 groupLoan.getPersonnel().getPersonnelId()), new AccountReferenceDto(groupLoan.getAccountId()),
@@ -258,7 +319,6 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
     @Test
     public void testValidatePaymentWithInvalidNegativePaymentAmount() throws Exception {
         String paymentAmount = "-1";
-        standardAccountService.setAccountPersistence(new AccountPersistence());
 
         AccountPaymentParametersDto accountPaymentParametersDto = new AccountPaymentParametersDto(new UserReferenceDto(
                 groupLoan.getPersonnel().getPersonnelId()), new AccountReferenceDto(groupLoan.getAccountId()),
@@ -268,7 +328,7 @@ public class StandardAccountServiceIntegrationTest extends AccountIntegrationTes
         Assert.assertTrue(errors.contains(InvalidPaymentReason.INVALID_PAYMENT_AMOUNT));
     }
 
-    private SavingsBO createSavingsAccount() throws Exception {
+    private SavingsBO createClientSavingsAccount() throws Exception {
         MeetingBO meetingIntCalc = TestObjectFactory.createMeeting(TestObjectFactory.getNewMeetingForToday(
                 RecurrenceType.WEEKLY, TestObjectFactory.EVERY_WEEK, MeetingType.CUSTOMER_MEETING));
         MeetingBO meetingIntPost = TestObjectFactory.createMeeting(TestObjectFactory.getNewMeetingForToday(

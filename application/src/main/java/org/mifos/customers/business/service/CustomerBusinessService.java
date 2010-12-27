@@ -23,38 +23,19 @@ package org.mifos.customers.business.service;
 import static org.mifos.framework.util.helpers.NumberUtils.getPercentage;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 
-import org.mifos.accounts.business.AccountBO;
-import org.mifos.accounts.business.AccountStateMachines;
-import org.mifos.accounts.util.helpers.AccountTypes;
-import org.mifos.config.exceptions.ConfigurationException;
-import org.mifos.customers.business.CustomerActivityEntity;
+import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.business.CustomerBO;
-import org.mifos.customers.business.CustomerStatusEntity;
-import org.mifos.customers.checklist.business.CustomerCheckListBO;
-import org.mifos.customers.client.business.CustomerPictureEntity;
 import org.mifos.customers.office.business.OfficeBO;
 import org.mifos.customers.persistence.CustomerDao;
 import org.mifos.customers.persistence.CustomerPersistence;
-import org.mifos.customers.personnel.business.PersonnelBO;
-import org.mifos.customers.api.CustomerLevel;
-import org.mifos.customers.util.helpers.CustomerRecentActivityDto;
-import org.mifos.customers.util.helpers.CustomerStatus;
-import org.mifos.customers.util.helpers.CustomerStatusFlag;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.business.service.BusinessService;
 import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.exceptions.ServiceException;
-import org.mifos.framework.exceptions.StatesInitializationException;
-import org.mifos.framework.hibernate.helper.QueryResult;
-import org.mifos.framework.util.helpers.Money;
 import org.mifos.security.util.UserContext;
 
 /**
- * TODO - keithw - move all methods of this on to either CustomerService or CustomerDao.
- *
  * @deprecated - do not add any more behaviour to this {@link BusinessService}. Service level logic should go on {@link CustomerService}. Any data-retrieval methods should go on {@link CustomerDao}.
  */
 @Deprecated
@@ -75,26 +56,6 @@ public class CustomerBusinessService implements BusinessService {
         return null;
     }
 
-    public QueryResult searchGroupClient(String searchString, Short userId) throws ServiceException {
-        try {
-            return customerPersistence.searchGroupClient(searchString, userId);
-        } catch (PersistenceException e) {
-            throw new ServiceException(e);
-        } catch (ConfigurationException ce) {
-            throw new ServiceException(ce);
-        }
-
-    }
-
-    public QueryResult searchCustForSavings(String searchString, Short userId) throws ServiceException {
-        try {
-            return customerPersistence.searchCustForSavings(searchString, userId);
-        } catch (PersistenceException e) {
-            throw new ServiceException(e);
-        }
-
-    }
-
     public CustomerBO getCustomer(Integer customerId) throws ServiceException {
         try {
             return customerPersistence.getCustomer(customerId);
@@ -111,143 +72,12 @@ public class CustomerBusinessService implements BusinessService {
         }
     }
 
-    public List<CustomerRecentActivityDto> getRecentActivityView(Integer customerId) throws ServiceException {
-        CustomerBO customerBO;
-        try {
-            customerBO = customerPersistence.getCustomer(customerId);
-        } catch (PersistenceException e) {
-            throw new ServiceException(e);
-        }
-        List<CustomerActivityEntity> customerActivityDetails = customerBO.getCustomerAccount()
-                .getCustomerActivitDetails();
-        List<CustomerRecentActivityDto> customerActivityViewList = new ArrayList<CustomerRecentActivityDto>();
-
-        int count = 0;
-        for (CustomerActivityEntity customerActivityEntity : customerActivityDetails) {
-            customerActivityViewList.add(getCustomerActivityView(customerActivityEntity));
-            if (++count == 3) {
-                break;
-            }
-        }
-        return customerActivityViewList;
-    }
-
-    public List<CustomerRecentActivityDto> getAllActivityView(String globalCustNum) throws ServiceException {
-        CustomerBO customerBO = findBySystemId(globalCustNum);
-        List<CustomerActivityEntity> customerActivityDetails = customerBO.getCustomerAccount()
-                .getCustomerActivitDetails();
-        List<CustomerRecentActivityDto> customerActivityViewList = new ArrayList<CustomerRecentActivityDto>();
-        for (CustomerActivityEntity customerActivityEntity : customerActivityDetails) {
-            customerActivityViewList.add(getCustomerActivityView(customerActivityEntity));
-        }
-        return customerActivityViewList;
-    }
-
-    public QueryResult search(String searchString, Short officeId, Short userId, Short userOfficeId)
-            throws ServiceException {
-
-        try {
-            return customerPersistence.search(searchString, officeId, userId, userOfficeId);
-        } catch (PersistenceException e) {
-            throw new ServiceException(e);
-        }
-
-    }
-
-    public List<CustomerCheckListBO> getStatusChecklist(Short statusId, Short customerLevelId) throws ServiceException {
-        try {
-            return customerPersistence.getStatusChecklist(statusId, customerLevelId);
-        } catch (PersistenceException pe) {
-            throw new ServiceException(pe);
-        }
-    }
-
-    public List<CustomerStatusEntity> retrieveAllCustomerStatusList(Short levelId) throws ServiceException {
-        try {
-            return customerPersistence.retrieveAllCustomerStatusList(levelId);
-        } catch (PersistenceException pe) {
-            throw new ServiceException(pe);
-        }
-    }
-
-    public void initializeStateMachine(AccountTypes accountTypes, CustomerLevel customerLevel) throws ServiceException {
-        try {
-            AccountStateMachines.getInstance().initialize(accountTypes, customerLevel);
-        } catch (StatesInitializationException sie) {
-            throw new ServiceException(sie);
-        }
-    }
-
-    public String getStatusName(CustomerStatus customerStatus, CustomerLevel customerLevel) {
-        return AccountStateMachines.getInstance().getCustomerStatusName(customerStatus, customerLevel);
-    }
-
-    public String getFlagName(CustomerStatusFlag customerStatusFlag, CustomerLevel customerLevel) {
-        return AccountStateMachines.getInstance().getCustomerFlagName(customerStatusFlag, customerLevel);
-    }
-
-    public List<CustomerStatusEntity> getStatusList(CustomerStatusEntity customerStatusEntity,
-            CustomerLevel customerLevel, Short localeId) {
-        List<CustomerStatusEntity> statusList = AccountStateMachines.getInstance().getStatusList(customerStatusEntity,
-                customerLevel);
-        if (null != statusList) {
-            for (CustomerStatusEntity customerStatusObj : statusList) {
-                customerStatusObj.setLocaleId(localeId);
-            }
-        }
-        return statusList;
-    }
-
-    public QueryResult getAllCustomerNotes(Integer customerId) throws ServiceException {
-        try {
-            return customerPersistence.getAllCustomerNotes(customerId);
-        } catch (PersistenceException pe) {
-            throw new ServiceException(pe);
-        }
-    }
-
-    public CustomerPictureEntity retrievePicture(Integer customerId) throws ServiceException {
-        try {
-            return customerPersistence.retrievePicture(customerId);
-        } catch (PersistenceException pe) {
-            throw new ServiceException(pe);
-        }
-    }
-
-    public List<AccountBO> getAllClosedAccount(Integer customerId, Short accountTypeId) throws ServiceException {
-        try {
-            return customerPersistence.getAllClosedAccount(customerId, accountTypeId);
-        } catch (PersistenceException pe) {
-            throw new ServiceException(pe);
-        }
-    }
-
-    public List<CustomerBO> getActiveCentersUnderUser(PersonnelBO personnel) throws ServiceException {
-        try {
-            return customerPersistence.getActiveCentersUnderUser(personnel);
-        } catch (PersistenceException pe) {
-            throw new ServiceException(pe);
-        }
-    }
-
     public Integer getCenterCountForOffice(OfficeBO office) throws ServiceException {
         return getCustomerCountForOffice(CustomerLevel.CENTER, office);
     }
 
-    public Integer getClientCountForOffice(OfficeBO office) throws ServiceException {
-        return getCustomerCountForOffice(CustomerLevel.CLIENT, office);
-    }
-
     public Integer getGroupCountForOffice(OfficeBO office) throws ServiceException {
         return getCustomerCountForOffice(CustomerLevel.GROUP, office);
-    }
-
-    public List<CustomerBO> getGroupsUnderUser(PersonnelBO personnel) throws ServiceException {
-        try {
-            return customerPersistence.getGroupsUnderUser(personnel);
-        } catch (PersistenceException pe) {
-            throw new ServiceException(pe);
-        }
     }
 
     public Integer getActiveClientCountForOffice(OfficeBO office) throws ServiceException {
@@ -406,37 +236,6 @@ public class CustomerBusinessService implements BusinessService {
         } catch (PersistenceException e) {
             throw new ServiceException(e);
         }
-    }
-
-    public List<CustomerBO> getCustomersByLevelId(Short customerLevelId) throws ServiceException {
-        try {
-            return customerPersistence.getCustomersByLevelId(customerLevelId);
-        } catch (PersistenceException pe) {
-            throw new ServiceException(pe);
-        }
-    }
-
-    private CustomerRecentActivityDto getCustomerActivityView(CustomerActivityEntity customerActivityEntity) {
-        CustomerRecentActivityDto customerRecentActivityDto = new CustomerRecentActivityDto();
-        customerRecentActivityDto.setActivityDate(customerActivityEntity.getCreatedDate());
-        customerRecentActivityDto.setDescription(customerActivityEntity.getDescription());
-        Money amount = removeSign(customerActivityEntity.getAmount());
-        if (amount.isZero()) {
-            customerRecentActivityDto.setAmount("-");
-        } else {
-            customerRecentActivityDto.setAmount(amount.toString());
-        }
-        if (customerActivityEntity.getPersonnel() != null) {
-            customerRecentActivityDto.setPostedBy(customerActivityEntity.getPersonnel().getDisplayName());
-        }
-        return customerRecentActivityDto;
-    }
-
-    private Money removeSign(Money amount) {
-        if (amount != null && amount.isLessThanZero()) {
-            return amount.negate();
-        }
-        return amount;
     }
 
     private Integer getCustomerCountForOffice(CustomerLevel customerLevel, OfficeBO office) throws ServiceException {

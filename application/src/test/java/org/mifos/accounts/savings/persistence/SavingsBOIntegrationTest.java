@@ -30,7 +30,6 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import junit.framework.Assert;
 
@@ -60,7 +59,6 @@ import org.mifos.accounts.productdefinition.util.helpers.RecommendedAmountUnit;
 import org.mifos.accounts.productdefinition.util.helpers.SavingsType;
 import org.mifos.accounts.savings.business.SavingsActivityEntity;
 import org.mifos.accounts.savings.business.SavingsBO;
-import org.mifos.accounts.savings.business.SavingsRecentActivityDto;
 import org.mifos.accounts.savings.business.SavingsScheduleEntity;
 import org.mifos.accounts.savings.business.SavingsTrxnDetailEntity;
 import org.mifos.accounts.savings.util.helpers.SavingsTestHelper;
@@ -70,7 +68,6 @@ import org.mifos.accounts.util.helpers.AccountTypes;
 import org.mifos.accounts.util.helpers.PaymentData;
 import org.mifos.accounts.util.helpers.PaymentStatus;
 import org.mifos.accounts.util.helpers.SavingsPaymentData;
-import org.mifos.accounts.util.helpers.WaiveEnum;
 import org.mifos.application.collectionsheet.business.CollectionSheetEntryInstallmentDto;
 import org.mifos.application.holiday.business.Holiday;
 import org.mifos.application.master.business.MifosCurrency;
@@ -78,12 +75,15 @@ import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.config.AccountingRules;
 import org.mifos.config.FiscalCalendarRules;
 import org.mifos.config.business.Configuration;
+import org.mifos.config.persistence.ConfigurationPersistence;
 import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.group.business.GroupBO;
+import org.mifos.customers.persistence.CustomerPersistence;
 import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.personnel.persistence.PersonnelPersistence;
 import org.mifos.customers.util.helpers.CustomerStatus;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.screen.SavingsRecentActivityDto;
 import org.mifos.framework.MifosIntegrationTestCase;
 import org.mifos.framework.TestUtils;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
@@ -205,10 +205,12 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
 
         savings = TestObjectFactory.getObject(SavingsBO.class, savings.getAccountId());
         java.util.Date trxnDate = offSetCurrentDate(-5);
+        Date meetingDate = new CustomerPersistence().getLastMeetingDateForCustomer(savings.getCustomer().getCustomerId());
+        boolean repaymentIndependentOfMeetingEnabled = new ConfigurationPersistence().isRepaymentIndepOfMeetingEnabled();
         if (AccountingRules.isBackDatedTxnAllowed()) {
-            Assert.assertTrue(savings.isTrxnDateValid(trxnDate));
+            Assert.assertTrue(savings.isTrxnDateValid(trxnDate, meetingDate, repaymentIndependentOfMeetingEnabled));
         } else {
-            Assert.assertFalse(savings.isTrxnDateValid(trxnDate));
+            Assert.assertFalse(savings.isTrxnDateValid(trxnDate, meetingDate, repaymentIndependentOfMeetingEnabled));
         }
         group = TestObjectFactory.getGroup(group.getCustomerId());
     }
@@ -247,44 +249,6 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
         Assert.assertEquals(AccountState.SAVINGS_ACTIVE.getValue(), savings.getAccountState().getId());
         Assert.assertEquals(savingsOffering.getRecommendedAmount(), savings.getRecommendedAmount());
 
-    }
-
-    @Test
-    public void testSuccessfulUpdate() throws Exception {
-        createInitialObjects();
-        savingsOffering = TestObjectFactory.createSavingsProduct("dfasdasd1", "sad1",
-                RecommendedAmountUnit.PER_INDIVIDUAL);
-        savings = helper.createSavingsAccount("000100000000017", savingsOffering, group,
-                AccountStates.SAVINGS_ACC_PARTIALAPPLICATION, userContext);
-        savings.update(new Money(currency, "700.0"), getCustomFieldView());
-        StaticHibernateUtil.flushSession();;
-
-        savings = TestObjectFactory.getObject(SavingsBO.class, savings.getAccountId());
-        Assert.assertTrue(true);
-        Assert.assertEquals(TestUtils.createMoney(700.0), savings.getRecommendedAmount());
-    }
-
-    @Test
-    public void testSuccessfulUpdateDepositSchedule() throws Exception {
-        createInitialObjects();
-        savingsOffering = TestObjectFactory.createSavingsProduct("dfasdasd1", "sad1",
-                RecommendedAmountUnit.COMPLETE_GROUP);
-        savings = helper.createSavingsAccount("000100000000017", savingsOffering, group,
-                AccountStates.SAVINGS_ACC_APPROVED, userContext);
-        savings.update(new Money(currency, "700.0"), getCustomFieldView());
-
-        StaticHibernateUtil.flushSession();;
-
-        savings = TestObjectFactory.getObject(SavingsBO.class, savings.getAccountId());
-        Assert.assertTrue(true);
-        Assert.assertEquals(TestUtils.createMoney(700.0), savings.getRecommendedAmount());
-        Set<AccountActionDateEntity> actionDates = savings.getAccountActionDates();
-        Assert.assertNotNull(actionDates);
-        for (AccountActionDateEntity entity : actionDates) {
-            if (entity.getActionDate().compareTo(new java.sql.Date(System.currentTimeMillis())) > 0) {
-                Assert.assertEquals(TestUtils.createMoney(700.0), ((SavingsScheduleEntity) entity).getDeposit());
-            }
-        }
     }
 
     @Test
@@ -384,7 +348,8 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
 
         SavingsPaymentData savingsPaymentData = new SavingsPaymentData(accountActionDate);
         paymentData.addAccountPaymentData(savingsPaymentData);
-        savings.applyPaymentWithPersist(paymentData);
+        IntegrationTestObjectMother.applyAccountPayment(savings, paymentData);
+
         Assert.assertEquals(AccountStates.SAVINGS_ACC_APPROVED, savings.getAccountState().getId().shortValue());
         Assert.assertEquals(TestUtils.createMoney(100.0), savings.getSavingsBalance());
         Assert.assertEquals(1, savings.getSavingsActivityDetails().size());
@@ -416,8 +381,7 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
 
         SavingsPaymentData savingsPaymentData = new SavingsPaymentData(accountActionDate);
         paymentData.addAccountPaymentData(savingsPaymentData);
-        savings.applyPaymentWithPersist(paymentData);
-
+        IntegrationTestObjectMother.applyAccountPayment(savings, paymentData);
 
         savings = (SavingsBO) accountPersistence.getAccount(savings.getAccountId());
         Assert.assertEquals(AccountStates.SAVINGS_ACC_APPROVED, savings.getAccountState().getId().shortValue());
@@ -443,7 +407,8 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
         savings = helper.createSavingsAccount("000X00000000013", savingsOffering, group,
                 AccountStates.SAVINGS_ACC_APPROVED, userContext);
         savings.setUserContext(TestObjectFactory.getContext());
-        savings.changeStatus(AccountState.SAVINGS_CANCELLED.getValue(), null, "");
+        PersonnelBO loggedInUser = IntegrationTestObjectMother.testUser();
+        savings.changeStatus(AccountState.SAVINGS_CANCELLED, null, "", loggedInUser);
 
         StaticHibernateUtil.getSessionTL().clear();
 
@@ -455,9 +420,7 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
         paymentData.setReceiptDate(new Date(System.currentTimeMillis()));
         paymentData.setReceiptNum("34244");
         paymentData.addAccountPaymentData(getSavingsPaymentdata(null));
-        savings.applyPaymentWithPersist(paymentData);
-
-
+        IntegrationTestObjectMother.applyAccountPayment(savings, paymentData);
 
         savings = savingsPersistence.findById(savings.getAccountId());
 
@@ -511,7 +474,8 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
         savings = helper.createSavingsAccount("000X00000000013", savingsOffering, group,
                 AccountStates.SAVINGS_ACC_APPROVED, userContext);
         savings.setUserContext(TestObjectFactory.getContext());
-        savings.changeStatus(AccountState.SAVINGS_CANCELLED.getValue(), null, "");
+        PersonnelBO loggedInUser = IntegrationTestObjectMother.testUser();
+        savings.changeStatus(AccountState.SAVINGS_CANCELLED, null, "", loggedInUser);
 
         savings.setUserContext(this.userContext);
         AccountStateEntity state = (AccountStateEntity) session.get(AccountStateEntity.class, (short) 15);
@@ -535,7 +499,8 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
         savings = helper.createSavingsAccount("000100000000017", savingsOffering, group,
                 AccountStates.SAVINGS_ACC_PARTIALAPPLICATION, userContext);
         AccountStateMachines.getInstance().initialize(AccountTypes.SAVINGS_ACCOUNT, null);
-        savings.changeStatus(AccountState.SAVINGS_PENDING_APPROVAL.getValue(), null, "notes");
+        PersonnelBO loggedInUser = IntegrationTestObjectMother.testUser();
+        savings.changeStatus(AccountState.SAVINGS_PENDING_APPROVAL, null, "notes", loggedInUser);
         Assert.assertEquals(AccountStates.SAVINGS_ACC_PENDINGAPPROVAL, savings.getAccountState().getId().shortValue());
 
     }
@@ -549,7 +514,8 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
         AccountStateMachines.getInstance().initialize(AccountTypes.SAVINGS_ACCOUNT, null);
         // 6 is blacklisted
 
-        savings.changeStatus(AccountState.SAVINGS_CANCELLED.getValue(), Short.valueOf("6"), "notes");
+        PersonnelBO loggedInUser = IntegrationTestObjectMother.testUser();
+        savings.changeStatus(AccountState.SAVINGS_CANCELLED, Short.valueOf("6"), "notes", loggedInUser);
         Assert.assertEquals(AccountStates.SAVINGS_ACC_CANCEL, savings.getAccountState().getId().shortValue());
 
     }
@@ -831,79 +797,6 @@ public class SavingsBOIntegrationTest extends MifosIntegrationTestCase {
         savings = (SavingsBO) saveAndFetch(savings);
 
         Assert.assertEquals(savings.getDetailsOfInstallmentsInArrears().size(), 2);
-    }
-
-    @Test
-    public void testWaiveAmountOverDueForSingleInstallmentDue() throws Exception {
-        savings = getSavingsAccount();
-        AccountActionDateEntity accountActionDateEntity = savings.getAccountActionDate((short) 1);
-        ((SavingsScheduleEntity) accountActionDateEntity).setActionDate(offSetCurrentDate(1));
-        savings = (SavingsBO) saveAndFetch(savings);
-        Assert.assertEquals(savings.getTotalAmountInArrears(), TestUtils.createMoney(200.0));
-        savings.waiveAmountOverDue();
-        savings = (SavingsBO) saveAndFetch(savings);
-        Assert.assertEquals(savings.getTotalAmountInArrears(), getRoundedMoney(0.0));
-        Assert.assertEquals(savings.getSavingsActivityDetails().size(), 1);
-    }
-
-    @Test
-    public void testWaiveAmountOverDueWithPartialPayment() throws Exception {
-        savings = getSavingsAccount();
-        SavingsScheduleEntity accountActionDateEntity = (SavingsScheduleEntity) savings.getAccountActionDate((short) 1);
-        accountActionDateEntity.setDepositPaid(new Money(getCurrency(), "20.0"));
-        accountActionDateEntity.setActionDate(offSetCurrentDate(1));
-
-        savings = (SavingsBO) saveAndFetch(savings);
-        Assert.assertEquals(savings.getTotalAmountInArrears(), TestUtils.createMoney(180.0));
-
-        savings.waiveAmountOverDue();
-        savings = (SavingsBO) saveAndFetch(savings);
-        Assert.assertEquals(savings.getTotalAmountInArrears(), getRoundedMoney(0.0));
-        Assert.assertEquals(savings.getSavingsActivityDetails().size(), 1);
-    }
-
-    @Test
-    public void testWaiveAmountOverDueForTwoInstallmentsDue() throws Exception {
-        savings = getSavingsAccount();
-
-        SavingsScheduleEntity accountActionDateEntity = (SavingsScheduleEntity) savings.getAccountActionDate((short) 1);
-        accountActionDateEntity.setActionDate(offSetCurrentDate(2));
-        SavingsScheduleEntity accountActionDateEntity2 = (SavingsScheduleEntity) savings
-                .getAccountActionDate((short) 2);
-        accountActionDateEntity2.setActionDate(offSetCurrentDate(1));
-
-        savings = (SavingsBO) saveAndFetch(savings);
-
-        Assert.assertEquals(savings.getTotalAmountInArrears(), TestUtils.createMoney(400.0));
-
-        savings.waiveAmountOverDue();
-        savings = (SavingsBO) saveAndFetch(savings);
-        Assert.assertEquals(savings.getTotalAmountInArrears(), getRoundedMoney(0.0));
-        Assert.assertEquals(savings.getSavingsActivityDetails().size(), 1);
-    }
-
-    @Test
-    public void testWaiveAmountDueForCurrentDateMeeting() throws Exception {
-        savings = getSavingsAccount();
-        Assert.assertEquals(savings.getTotalAmountDueForNextInstallment(), TestUtils.createMoney(200.0));
-        savings.waiveAmountDue(WaiveEnum.ALL);
-        savings = (SavingsBO) saveAndFetch(savings);
-        Assert.assertEquals(savings.getTotalAmountInArrears(), getRoundedMoney(0.0));
-        Assert.assertEquals(savings.getSavingsActivityDetails().size(), 1);
-    }
-
-    @Test
-    public void testWaiveAmountDueWithPartialPayment() throws Exception {
-        savings = getSavingsAccount();
-        SavingsScheduleEntity accountActionDateEntity = (SavingsScheduleEntity) savings.getAccountActionDate((short) 1);
-        accountActionDateEntity.setDepositPaid(new Money(getCurrency(), "20.0"));
-
-        savings = (SavingsBO) saveAndFetch(savings);
-        Assert.assertEquals(savings.getTotalAmountDueForNextInstallment(), TestUtils.createMoney(180.0));
-        savings.waiveAmountDue(WaiveEnum.ALL);
-        savings = (SavingsBO) saveAndFetch(savings);
-        Assert.assertEquals(savings.getTotalAmountInArrears(), getRoundedMoney(0.0));
-        Assert.assertEquals(savings.getSavingsActivityDetails().size(), 1);
     }
 
     private void createCustomerObjects() {

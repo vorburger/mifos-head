@@ -20,6 +20,8 @@
 
 package org.mifos.accounts.productdefinition.struts.action;
 
+import org.mifos.accounts.productdefinition.business.*;
+import org.mifos.application.servicefacade.DependencyInjectedServiceLocator;
 import org.slf4j.Logger;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.collections.CollectionUtils;
@@ -34,23 +36,7 @@ import org.mifos.accounts.financial.business.service.FinancialBusinessService;
 import org.mifos.accounts.financial.util.helpers.FinancialActionConstants;
 import org.mifos.accounts.financial.util.helpers.FinancialConstants;
 import org.mifos.accounts.fund.business.FundBO;
-import org.mifos.accounts.loan.business.service.LoanBusinessService;
 import org.mifos.accounts.loan.util.helpers.LoanConstants;
-import org.mifos.accounts.productdefinition.business.GracePeriodTypeEntity;
-import org.mifos.accounts.productdefinition.business.InterestCalcTypeEntity;
-import org.mifos.accounts.productdefinition.business.LoanAmountFromLastLoanAmountBO;
-import org.mifos.accounts.productdefinition.business.LoanAmountFromLoanCycleBO;
-import org.mifos.accounts.productdefinition.business.LoanAmountSameForAllLoanBO;
-import org.mifos.accounts.productdefinition.business.LoanOfferingBO;
-import org.mifos.accounts.productdefinition.business.LoanOfferingFeesEntity;
-import org.mifos.accounts.productdefinition.business.LoanOfferingFundEntity;
-import org.mifos.accounts.productdefinition.business.NoOfInstallFromLastLoanAmountBO;
-import org.mifos.accounts.productdefinition.business.NoOfInstallFromLoanCycleBO;
-import org.mifos.accounts.productdefinition.business.NoOfInstallSameForAllLoanBO;
-import org.mifos.accounts.productdefinition.business.PrdApplicableMasterEntity;
-import org.mifos.accounts.productdefinition.business.ProductCategoryBO;
-import org.mifos.accounts.productdefinition.business.VariableInstallmentDetailsBO;
-import org.mifos.accounts.productdefinition.business.QuestionGroupReference;
 import org.mifos.accounts.productdefinition.business.service.LoanPrdBusinessService;
 import org.mifos.accounts.productdefinition.struts.actionforms.LoanPrdActionForm;
 import org.mifos.accounts.productdefinition.util.helpers.PrdStatus;
@@ -81,7 +67,6 @@ import org.mifos.security.util.ActionSecurity;
 import org.mifos.security.util.SecurityConstants;
 import org.mifos.security.util.UserContext;
 import org.mifos.service.MifosServiceFactory;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
@@ -110,7 +95,7 @@ public class LoanPrdAction extends BaseAction {
 
     @Override
     protected BusinessService getService() {
-        return new LoanBusinessService();
+        return DependencyInjectedServiceLocator.locateLoanBusinessService();
     }
 
     @Override
@@ -232,13 +217,7 @@ public class LoanPrdAction extends BaseAction {
         loanOffering.setCurrency(getCurrency(loanPrdActionForm.getCurrencyId()));
 
 
-        loanOffering.setCashFlowCheckEnabled(loanPrdActionForm.getCashFlowValidation());
-        if(loanPrdActionForm.getCashFlowValidation()) {
-            loanOffering.setCashFlowCheckThreshold(loanPrdActionForm.getCashFlowWarningThresholdValue());
-        }else {
-            loanOffering.setCashFlowCheckThreshold(null);
-        }
-
+        mapCashFlowDetail(loanPrdActionForm, loanOffering);
         mapVariableInstallmentDetails(loanOffering, loanPrdActionForm);
 
         loanOffering.save();
@@ -262,6 +241,25 @@ public class LoanPrdAction extends BaseAction {
         }
         return questionGroupReferences;
     }
+
+    private void mapCashFlowDetail(LoanPrdActionForm loanPrdActionForm, LoanOfferingBO loanOffering) {
+        boolean cashFlowValidationEnabled = loanPrdActionForm.getCashFlowValidation();
+        loanOffering.setCashFlowCheckEnabled(cashFlowValidationEnabled);
+        if (cashFlowValidationEnabled) {
+            loanOffering.setCashFlowDetail(mapToCashFlowDetails(loanPrdActionForm));
+        } else {
+            loanOffering.setCashFlowDetail(null);
+        }
+    }
+
+    private CashFlowDetail mapToCashFlowDetails(LoanPrdActionForm loanPrdActionForm) {
+        CashFlowDetail cashFlowDetail = new CashFlowDetail();
+        cashFlowDetail.setCashFlowThreshold(loanPrdActionForm.getCashFlowThresholdValue());
+        cashFlowDetail.setIndebtednessRatio(loanPrdActionForm.getIndebtednessRatioValue());
+        cashFlowDetail.setRepaymentCapacity(loanPrdActionForm.getRepaymentCapacityValue());
+        return cashFlowDetail;
+    }
+
     private void mapVariableInstallmentDetails(LoanOfferingBO loanOffering, LoanPrdActionForm loanPrdActionForm) {
         boolean variableInstallmentsAllowed = loanPrdActionForm.canConfigureVariableInstallments();
         loanOffering.setVariableInstallmentsAllowed(variableInstallmentsAllowed);
@@ -366,6 +364,7 @@ public class LoanPrdAction extends BaseAction {
         loanOffering.setUserContext(userContext);
         setInitialObjectForAuditLogging(loanOffering);
         mapVariableInstallmentDetails(loanOffering, loanPrdActionForm);
+        mapCashFlowDetail(loanPrdActionForm,loanOffering);
         loanOffering.update(userContext.getId(), loanPrdActionForm.getPrdOfferingName(), loanPrdActionForm
                 .getPrdOfferingShortName(),
                 getProductCategory(((List<ProductCategoryBO>) SessionUtils.getAttribute(
@@ -387,17 +386,6 @@ public class LoanPrdAction extends BaseAction {
                         loanPrdActionForm.getPrdOfferinFees()), loanPrdActionForm.getRecurAfterValue(), RecurrenceType
                         .fromInt(loanPrdActionForm.getFreqOfInstallmentsValue()), loanPrdActionForm, loanPrdActionForm.shouldWaiverInterest(),
                 getQuestionGroups(request));
-        loanOffering.setCashFlowCheckEnabled(loanPrdActionForm.getCashFlowValidation());
-        if(loanPrdActionForm.getCashFlowValidation()) {
-            if(StringUtils.isEmpty(loanPrdActionForm.getCashFlowWarningThreshold())) {
-                loanOffering.setCashFlowCheckThreshold(null);
-            }else {
-                loanOffering.setCashFlowCheckThreshold(Double.valueOf(loanPrdActionForm.getCashFlowWarningThreshold()));
-
-            }
-        }else {
-            loanOffering.setCashFlowCheckThreshold(null);
-        }
 
         logger.debug("update method of Loan Product Action called" + loanPrdActionForm.getPrdOfferingId());
         return mapping.findForward(ActionForwards.update_success.toString());
@@ -431,7 +419,9 @@ public class LoanPrdAction extends BaseAction {
             for (QuestionGroupReference questionGroupReference : questionGroupReferences) {
                 Integer questionGroupId = questionGroupReference.getQuestionGroupId();
                 QuestionGroupDetail questionGroupDetail = questionnaireServiceFacade.getQuestionGroupDetail(questionGroupId);
-                if (questionGroupDetail != null && questionGroupDetail.isActive()) questionGroupDetails.add(questionGroupDetail);
+                if (questionGroupDetail != null && questionGroupDetail.isActive()) {
+                    questionGroupDetails.add(questionGroupDetail);
+                }
             }
             SessionUtils.setCollectionAttribute(ProductDefinitionConstants.SELECTEDQGLIST, questionGroupDetails, request);
         }
@@ -642,8 +632,20 @@ public class LoanPrdAction extends BaseAction {
         setVariableInstallmentDetailsOnLoanProductForm(loanPrdActionForm, loanProduct);
 
         loanPrdActionForm.setCashFlowValidation(loanProduct.isCashFlowCheckEnabled());
-        if(loanProduct.getCashFlowCheckThreshold()!=null) {
-            loanPrdActionForm.setCashFlowWarningThreshold(String.valueOf(loanProduct.getCashFlowCheckThreshold()));
+        CashFlowDetail cashFlowDetail = loanProduct.getCashFlowDetail();
+        if(cashFlowDetail != null) {
+            Double cashFlowThreshold = cashFlowDetail.getCashFlowThreshold();
+            if(cashFlowThreshold != null) {
+                loanPrdActionForm.setCashFlowThreshold(String.valueOf(cashFlowThreshold));
+            }
+            Double indebtednessRatio = cashFlowDetail.getIndebtednessRatio();
+            if (indebtednessRatio != null) {
+                loanPrdActionForm.setIndebtednessRatio(String.valueOf(indebtednessRatio));
+            }
+            Double repaymentCapacity = cashFlowDetail.getRepaymentCapacity();
+            if (repaymentCapacity != null) {
+                loanPrdActionForm.setRepaymentCapacity(String.valueOf(repaymentCapacity));
+            }
         }
 
         if (loanProduct.isLoanAmountTypeSameForAllLoan()) {

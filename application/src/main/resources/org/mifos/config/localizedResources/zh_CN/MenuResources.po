@@ -1,9 +1,9 @@
-#. extracted from MenuResources.properties
+#. extracted from application/src/main/resources/org/mifos/config/localizedResources/MenuResources.properties
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-08-02 03:47+0800\n"
+"POT-Creation-Date: 2010-11-28 11:25+0530\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -56,7 +56,7 @@ msgstr "部门"
 
 #: label.center
 msgid "center"
-msgstr "行政村"
+msgstr "中心"
 
 #: label.change
 msgid "Change"
@@ -228,7 +228,7 @@ msgstr "查看"
 
 #: label.w/ocenter
 msgid "w/o center"
-msgstr "w/o行政村"
+msgstr "w/o 中心"
 
 #: label.yoursettings
 msgid "Your settings"

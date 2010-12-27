@@ -20,8 +20,18 @@
 
 package org.mifos.customers.personnel.persistence;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.MissingResourceException;
+import java.util.ResourceBundle;
+import java.util.Set;
+
 import org.hibernate.Criteria;
 import org.hibernate.FetchMode;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.criterion.LogicalExpression;
 import org.hibernate.criterion.Order;
@@ -30,14 +40,13 @@ import org.mifos.accounts.savings.persistence.GenericDao;
 import org.mifos.application.NamedQueryConstants;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.master.util.helpers.MasterConstants;
-import org.mifos.application.servicefacade.CenterCreation;
 import org.mifos.application.util.helpers.EntityType;
 import org.mifos.customers.personnel.business.PersonnelBO;
-import org.mifos.customers.personnel.business.PersonnelCustomFieldEntity;
-import org.mifos.customers.personnel.business.PersonnelDto;
 import org.mifos.customers.personnel.business.PersonnelRoleEntity;
 import org.mifos.customers.personnel.util.helpers.PersonnelLevel;
 import org.mifos.customers.personnel.util.helpers.PersonnelStatus;
+import org.mifos.dto.domain.CenterCreation;
+import org.mifos.dto.domain.PersonnelDto;
 import org.mifos.dto.domain.UserDetailDto;
 import org.mifos.dto.domain.UserSearchDto;
 import org.mifos.dto.screen.SystemUserSearchResultsDto;
@@ -46,16 +55,6 @@ import org.mifos.security.MifosUser;
 import org.mifos.security.rolesandpermission.business.RoleBO;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.GrantedAuthorityImpl;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.MissingResourceException;
-import java.util.ResourceBundle;
-import java.util.Set;
 
 public class PersonnelDaoHibernate implements PersonnelDao {
 
@@ -81,7 +80,14 @@ public class PersonnelDaoHibernate implements PersonnelDao {
         HashMap<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("PERSONNEL_ID", id);
 
-        return (PersonnelBO) this.genericDao.executeUniqueResultNamedQuery("findPersonnelById", queryParameters);
+        PersonnelBO personnel = (PersonnelBO) this.genericDao.executeUniqueResultNamedQuery("findPersonnelById", queryParameters);
+        if (personnel != null) {
+            Hibernate.initialize(personnel.getPreferredLocale());
+            if (personnel.getPreferredLocale() != null) {
+                Hibernate.initialize(personnel.getPreferredLocale().getLanguage());
+            }
+        }
+        return personnel;
     }
 
     @Override
@@ -121,12 +127,14 @@ public class PersonnelDaoHibernate implements PersonnelDao {
 
         List<GrantedAuthority> authorities = getGrantedActivityAuthorities(activityIds);
 
-        return new MifosUser(user.getPersonnelId(), user.getOffice().getOfficeId(), username, password, enabled, accountNonExpired, credentialsNonExpired, accountNonLocked, authorities);
+        return new MifosUser(user.getPersonnelId(), user.getOffice().getOfficeId(), user.getLevelEnum().getValue(), new ArrayList<Short>(roleIds), username, password, enabled, accountNonExpired, credentialsNonExpired, accountNonLocked, authorities);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public List<PersonnelDto> findActiveLoanOfficersForOffice(CenterCreation centerCreationDto) {
+
+        List<PersonnelDto> activeLoanOfficers = new ArrayList<PersonnelDto>();
 
         HashMap<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("levelId", PersonnelLevel.LOAN_OFFICER.getValue());
@@ -137,8 +145,11 @@ public class PersonnelDaoHibernate implements PersonnelDao {
 
         List<PersonnelDto> queryResult = (List<PersonnelDto>) genericDao.executeNamedQuery(
                 NamedQueryConstants.MASTERDATA_ACTIVE_LOANOFFICERS_INBRANCH, queryParameters);
+        if (queryResult != null) {
+            activeLoanOfficers.addAll(queryResult);
+        }
 
-        return queryResult;
+        return activeLoanOfficers;
     }
 
     @Override
@@ -147,7 +158,11 @@ public class PersonnelDaoHibernate implements PersonnelDao {
         HashMap<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("globalPersonnelNum", globalNumber);
 
-        return (PersonnelBO) this.genericDao.executeUniqueResultNamedQuery(NamedQueryConstants.PERSONNEL_BY_SYSTEM_ID, queryParameters);
+        PersonnelBO personnel = (PersonnelBO) this.genericDao.executeUniqueResultNamedQuery(NamedQueryConstants.PERSONNEL_BY_SYSTEM_ID, queryParameters);
+        if (personnel != null) {
+            Hibernate.initialize(personnel.getPreferredLocale().getLanguage());
+        }
+        return personnel;
     }
 
     private List<GrantedAuthority> getGrantedActivityAuthorities(List<Short> activityIds) {
@@ -160,7 +175,7 @@ public class PersonnelDaoHibernate implements PersonnelDao {
 
     private String getRoleForActivityId(String activityId) {
         try {
-            return activityIdToRolesMap.getString(activityId);
+            return activityIdToRolesMap.getString(activityId).trim();
         } catch (MissingResourceException e) {
             return "ROLE_UNDEFINED";
         }
@@ -168,18 +183,18 @@ public class PersonnelDaoHibernate implements PersonnelDao {
 
     @SuppressWarnings("unchecked")
     @Override
-    public final Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForPersonnel() {
+    public final List<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForPersonnel() {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put(MasterConstants.ENTITY_TYPE, EntityType.PERSONNEL.getValue());
-        return (Iterator<CustomFieldDefinitionEntity>) genericDao.executeNamedQueryIterator(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
+        return (List<CustomFieldDefinitionEntity>) genericDao.executeNamedQuery(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public Iterator<PersonnelCustomFieldEntity> getCustomFieldResponses(Short customFieldId) {
+    public List<Object[]> getCustomFieldResponses(List<Short> customFieldIds) {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put("CUSTOM_FIELD_ID", customFieldId);
-        return (Iterator<PersonnelCustomFieldEntity>) genericDao.executeNamedQueryIterator("PersonnelCustomFieldEntity.getResponses", queryParameters);
+        queryParameters.put("CUSTOM_FIELD_ID", customFieldIds);
+        return (List<Object[]>) genericDao.executeNamedQuery("PersonnelCustomFieldEntity.getResponses", queryParameters);
     }
 
     @SuppressWarnings("unchecked")

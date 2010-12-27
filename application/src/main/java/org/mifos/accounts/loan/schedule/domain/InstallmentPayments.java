@@ -20,6 +20,7 @@
 package org.mifos.accounts.loan.schedule.domain;
 
 import org.apache.commons.lang.ObjectUtils;
+import org.mifos.framework.util.helpers.NumberUtils;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -31,6 +32,30 @@ public class InstallmentPayments {
 
     public InstallmentPayments() {
         installmentPayments = new ArrayList<InstallmentPayment>();
+    }
+
+    public BigDecimal getMiscPenaltyPaid() {
+        BigDecimal miscPenaltyPaid = BigDecimal.ZERO;
+        for (InstallmentPayment installmentPayment : installmentPayments) {
+            miscPenaltyPaid = miscPenaltyPaid.add(installmentPayment.getMiscPenaltyPaid());
+        }
+        return miscPenaltyPaid;
+    }
+
+    public BigDecimal getPenaltyPaid() {
+        BigDecimal penaltyPaid = BigDecimal.ZERO;
+        for (InstallmentPayment installmentPayment : installmentPayments) {
+            penaltyPaid = penaltyPaid.add(installmentPayment.getPenaltyPaid());
+        }
+        return penaltyPaid;
+    }
+
+    public BigDecimal getMiscFeesPaid() {
+        BigDecimal miscFeesPaid = BigDecimal.ZERO;
+        for (InstallmentPayment installmentPayment : installmentPayments) {
+            miscFeesPaid = miscFeesPaid.add(installmentPayment.getMiscFeesPaid());
+        }
+        return miscFeesPaid;
     }
 
     public BigDecimal getFeesPaid() {
@@ -73,7 +98,7 @@ public class InstallmentPayments {
         Date lastPaymentDate = null;
         for (InstallmentPayment installmentPayment : installmentPayments) {
             if (installmentPayment.isPartialPayment()) {
-                lastPaymentDate = (Date) ObjectUtils.max(lastPaymentDate, installmentPayment.getPaidDate());
+                lastPaymentDate = NumberUtils.max(lastPaymentDate, installmentPayment.getPaidDate());
             }
         }
         return lastPaymentDate;
@@ -83,24 +108,9 @@ public class InstallmentPayments {
         Date lastPaymentDate = null;
         for (InstallmentPayment installmentPayment : installmentPayments) {
             if (installmentPayment.isPrincipalPayment()) {
-                lastPaymentDate = (Date) ObjectUtils.max(lastPaymentDate, installmentPayment.getPaidDate());
+                lastPaymentDate = NumberUtils.max(lastPaymentDate, installmentPayment.getPaidDate());
             }
         }
         return lastPaymentDate;
-    }
-
-    public InstallmentPayment getRecentPrincipalPayment() {
-        InstallmentPayment result = null;
-        Date lastPaymentDate = new Date(1);
-        for (InstallmentPayment installmentPayment : installmentPayments) {
-            if (installmentPayment.isPrincipalPayment()) {
-                Date paidDate = installmentPayment.getPaidDate();
-                if (paidDate.compareTo(lastPaymentDate) >= 0) {
-                    lastPaymentDate = paidDate;
-                    result = installmentPayment;
-                }
-            }
-        }
-        return result;
     }
 }

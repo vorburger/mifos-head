@@ -20,12 +20,27 @@
 
 package org.mifos.customers.persistence;
 
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.Hibernate;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
 import org.mifos.accounts.business.AccountBO;
 import org.mifos.accounts.fees.business.FeeBO;
 import org.mifos.accounts.fees.util.helpers.FeeCategory;
@@ -39,7 +54,6 @@ import org.mifos.application.master.MessageLookup;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.master.business.MasterDataEntity;
 import org.mifos.application.master.business.MifosCurrency;
-import org.mifos.application.master.business.ValueListElement;
 import org.mifos.application.master.util.helpers.MasterConstants;
 import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.application.util.helpers.EntityType;
@@ -49,9 +63,9 @@ import org.mifos.config.ClientRules;
 import org.mifos.config.util.helpers.ConfigurationConstants;
 import org.mifos.core.CurrencyMismatchException;
 import org.mifos.core.MifosRuntimeException;
+import org.mifos.customers.api.CustomerLevel;
+import org.mifos.customers.business.CustomerAccountBO;
 import org.mifos.customers.business.CustomerBO;
-import org.mifos.customers.business.CustomerCustomFieldEntity;
-import org.mifos.accounts.api.CustomerDto;
 import org.mifos.customers.business.CustomerFlagDetailEntity;
 import org.mifos.customers.business.CustomerMeetingEntity;
 import org.mifos.customers.business.CustomerPerformanceHistoryDto;
@@ -63,59 +77,47 @@ import org.mifos.customers.exceptions.CustomerException;
 import org.mifos.customers.group.business.GroupBO;
 import org.mifos.customers.group.util.helpers.GroupConstants;
 import org.mifos.customers.personnel.business.PersonnelBO;
-import org.mifos.customers.personnel.business.PersonnelDto;
 import org.mifos.customers.personnel.business.PersonnelLevelEntity;
 import org.mifos.customers.personnel.util.helpers.PersonnelConstants;
 import org.mifos.customers.struts.uihelpers.CustomerUIHelperFn;
-import org.mifos.customers.util.helpers.CenterDisplayDto;
-import org.mifos.customers.util.helpers.CenterPerformanceHistoryDto;
-import org.mifos.customers.util.helpers.ClientDisplayDto;
-import org.mifos.customers.util.helpers.ClientFamilyDetailDto;
-import org.mifos.customers.util.helpers.CustomerAccountSummaryDto;
-import org.mifos.customers.util.helpers.CustomerAddressDto;
 import org.mifos.customers.util.helpers.CustomerConstants;
-import org.mifos.customers.util.helpers.CustomerDetailDto;
-import org.mifos.customers.util.helpers.CustomerFlagDto;
-import org.mifos.customers.api.CustomerLevel;
-import org.mifos.customers.util.helpers.CustomerMeetingDto;
-import org.mifos.customers.util.helpers.CustomerNoteDto;
-import org.mifos.customers.util.helpers.CustomerPositionDto;
 import org.mifos.customers.util.helpers.CustomerSearchConstants;
 import org.mifos.customers.util.helpers.CustomerStatus;
-import org.mifos.customers.util.helpers.GroupDisplayDto;
-import org.mifos.customers.util.helpers.LoanCycleCounter;
-import org.mifos.customers.util.helpers.LoanDetailDto;
 import org.mifos.customers.util.helpers.Param;
-import org.mifos.customers.util.helpers.SavingsDetailDto;
-import org.mifos.customers.util.helpers.SurveyDto;
+import org.mifos.dto.domain.CenterDisplayDto;
+import org.mifos.dto.domain.CenterPerformanceHistoryDto;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.CustomerAccountSummaryDto;
+import org.mifos.dto.domain.CustomerAddressDto;
+import org.mifos.dto.domain.CustomerDetailDto;
+import org.mifos.dto.domain.CustomerDto;
+import org.mifos.dto.domain.CustomerFlagDto;
+import org.mifos.dto.domain.CustomerMeetingDto;
+import org.mifos.dto.domain.CustomerNoteDto;
+import org.mifos.dto.domain.CustomerPositionOtherDto;
+import org.mifos.dto.domain.LoanDetailDto;
+import org.mifos.dto.domain.PersonnelDto;
+import org.mifos.dto.domain.SavingsDetailDto;
+import org.mifos.dto.domain.SurveyDto;
+import org.mifos.dto.domain.ValueListElement;
+import org.mifos.dto.screen.ClientDisplayDto;
+import org.mifos.dto.screen.ClientFamilyDetailOtherDto;
+import org.mifos.dto.screen.GroupDisplayDto;
+import org.mifos.dto.screen.LoanCycleCounter;
 import org.mifos.framework.components.fieldConfiguration.business.FieldConfigurationEntity;
 import org.mifos.framework.exceptions.HibernateSearchException;
 import org.mifos.framework.hibernate.helper.QueryFactory;
 import org.mifos.framework.hibernate.helper.QueryInputs;
 import org.mifos.framework.hibernate.helper.QueryResult;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
+import org.mifos.framework.util.helpers.ChapterNum;
+import org.mifos.framework.util.helpers.DateUtils;
 import org.mifos.framework.util.helpers.ExceptionConstants;
+import org.mifos.framework.util.helpers.MifosStringUtils;
 import org.mifos.framework.util.helpers.Money;
 import org.mifos.security.util.ActivityMapper;
 import org.mifos.security.util.SecurityConstants;
 import org.mifos.security.util.UserContext;
-
-import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import org.mifos.framework.util.helpers.MifosStringUtils;
 
 public class CustomerDaoHibernate implements CustomerDao {
 
@@ -136,6 +138,18 @@ public class CustomerDaoHibernate implements CustomerDao {
         queryParameters.put("CUSTOMER_ID", customerId);
 
         return (CustomerBO) genericDao.executeUniqueResultNamedQuery("customer.findById", queryParameters);
+    }
+
+    @Override
+    public CustomerBO findCustomerBySystemId(String globalCustNum) {
+        if (StringUtils.isBlank(globalCustNum)) {
+            throw new IllegalArgumentException("globalCustNum cannot be null or empty.");
+        }
+
+        final HashMap<String, Object> queryParameters = new HashMap<String, Object>();
+        queryParameters.put("globalCustNum", globalCustNum);
+
+        return (CustomerBO) genericDao.executeUniqueResultNamedQuery("customer.findBySystemId", queryParameters);
     }
 
     @Override
@@ -319,8 +333,16 @@ public class CustomerDaoHibernate implements CustomerDao {
 
         // bug #1417 - wrong client sort order. Client sort order on bulk
         // entry screens should match ordering on group details page.
-        Collections.sort(clients, CustomerDetailDto.searchIdComparator());
+        Collections.sort(clients, searchIdComparator());
         return clients;
+    }
+
+    public static Comparator<CustomerDetailDto> searchIdComparator() {
+        return new Comparator<CustomerDetailDto>() {
+            public int compare(final CustomerDetailDto o1, final CustomerDetailDto o2) {
+                return ChapterNum.compare(o1.getSearchId(), o2.getSearchId());
+            }
+        };
     }
 
     @Override
@@ -522,40 +544,16 @@ public class CustomerDaoHibernate implements CustomerDao {
                 loanOfficerName);
     }
 
-    @SuppressWarnings("unchecked")
+    @Override
     public CustomerAccountSummaryDto getCustomerAccountSummaryDto(Integer customerId) {
-
-        Map<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put("CUSTOMER_ID", customerId);
-        queryParameters.put("TODAY", new LocalDate().toString());
-
-        List<Object[]> queryResult = (List<Object[]>) this.genericDao.executeNamedQuery("getCustomerAccountSummaryDto",
-                queryParameters);
-
-        if (queryResult.size() > 1) {
-            throw new MifosRuntimeException("More than one row returned");
+        CustomerBO customer = findCustomerById(customerId);
+        for (AccountBO account : customer.getAccounts()) {
+            if (account instanceof CustomerAccountBO) {
+                CustomerAccountBO customerAccount = (CustomerAccountBO)account;
+                return new CustomerAccountSummaryDto(customerAccount.getGlobalAccountNum(), customerAccount.getTotalPaymentDue().toString());
+            }
         }
-        if (queryResult.size() == 0) {
-            return null;
-        }
-
-        final String globalAccountNum = (String) queryResult.get(0)[0];
-        // FIXME - johnw - currency
-        final Short currency = (Short) queryResult.get(0)[1];
-        BigDecimal totalChargesDue = (BigDecimal) queryResult.get(0)[2];
-        if (totalChargesDue == null) {
-            totalChargesDue = BigDecimal.ZERO;
-        }
-
-        BigDecimal totalFeesDue = (BigDecimal) queryResult.get(0)[3];
-        if (totalFeesDue == null) {
-            totalFeesDue = BigDecimal.ZERO;
-        }
-
-        MifosCurrency mifosCurrency = Money.getDefaultCurrency();
-        final Money totalAmountDue = new Money(mifosCurrency, (totalChargesDue.add(totalFeesDue)));
-
-        return new CustomerAccountSummaryDto(globalAccountNum, totalAmountDue);
+        return null;
     }
 
     @Override
@@ -589,7 +587,7 @@ public class CustomerDaoHibernate implements CustomerDao {
         List<CustomerDetailDto> groups = (List<CustomerDetailDto>) this.genericDao.executeNamedQuery(
                 "Customer.getListOfGroupsUnderCenterOtherThanClosedAndCancelled", queryParameters);
 
-        Collections.sort(groups, CustomerDetailDto.searchIdComparator());
+        Collections.sort(groups, searchIdComparator());
         return groups;
     }
 
@@ -641,7 +639,7 @@ public class CustomerDaoHibernate implements CustomerDao {
 
     @SuppressWarnings("unchecked")
     @Override
-    public List<CustomerPositionDto> getCustomerPositionDto(final Integer parentId, final UserContext userContext) {
+    public List<CustomerPositionOtherDto> getCustomerPositionDto(final Integer parentId, final UserContext userContext) {
 
         Map<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("PARENT_ID", parentId);
@@ -652,7 +650,7 @@ public class CustomerDaoHibernate implements CustomerDao {
             return null;
         }
 
-        List<CustomerPositionDto> customerPositions = new ArrayList<CustomerPositionDto>();
+        List<CustomerPositionOtherDto> customerPositions = new ArrayList<CustomerPositionOtherDto>();
         String lookupName;
         Integer customerId;
         String customerDisplayName;
@@ -664,7 +662,7 @@ public class CustomerDaoHibernate implements CustomerDao {
             customerDisplayName = (String) customerPosition[2];
             positionName = MessageLookup.getInstance().lookup(lookupName, userContext);
 
-            customerPositions.add(new CustomerPositionDto(positionName, customerId, customerDisplayName));
+            customerPositions.add(new CustomerPositionOtherDto(positionName, customerId, customerDisplayName));
         }
         return customerPositions;
     }
@@ -704,7 +702,7 @@ public class CustomerDaoHibernate implements CustomerDao {
             savingsBalance = new Money(mifosCurrency, (BigDecimal) savingsDetail[5]);
 
             savingsDetails.add(new SavingsDetailDto(globalAccountNum, prdOfferingName, accountStateId,
-                    accountStateName, savingsBalance));
+                    accountStateName, savingsBalance.toString()));
         }
         return savingsDetails;
     }
@@ -1049,14 +1047,14 @@ public class CustomerDaoHibernate implements CustomerDao {
         return avgLoanAmountInGoodOrBadStanding.toString();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public String getTotalLoanAmountForGroup(String groupSearchId, Short groupOfficeId) {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("SEARCH_STRING", groupSearchId);
         queryParameters.put("SEARCH_STRING2", groupSearchId + ".%");
         queryParameters.put("OFFICE_ID", groupOfficeId);
-        List<Object[]> queryResult = (List<Object[]>) genericDao.executeNamedQuery(
-                "Customer.getTotalLoanAmountForGroup", queryParameters);
+        List<Object[]> queryResult = (List<Object[]>) genericDao.executeNamedQuery("Customer.getTotalLoanAmountForGroup", queryParameters);
 
         if (queryResult.size() > 1) {
             return localizedMessageLookup("errors.multipleCurrencies");
@@ -1209,7 +1207,7 @@ public class CustomerDaoHibernate implements CustomerDao {
             for (LoanBO loan : loanAccounts) {
                 loanDetail.add(new LoanDetailDto(loan.getGlobalAccountNum(), loan.getLoanOffering()
                         .getPrdOfferingName(), loan.getAccountState().getId(), loan.getAccountState().getName(), loan
-                        .getLoanSummary().getOutstandingBalance(), loan.getTotalAmountDue()));
+                        .getLoanSummary().getOutstandingBalance().toString(), loan.getTotalAmountDue().toString()));
             }
             return loanDetail;
         }
@@ -1280,11 +1278,11 @@ public class CustomerDaoHibernate implements CustomerDao {
 
         String spouseFatherValue = null;
         String spouseFatherName = null;
-        List<ClientFamilyDetailDto> familyDetails = null;
+        List<ClientFamilyDetailOtherDto> familyDetails = null;
         Boolean areFamilyDetailsRequired = ClientRules.isFamilyDetailsRequired();
 
         if (areFamilyDetailsRequired) {
-            familyDetails = new ArrayList<ClientFamilyDetailDto>();
+            familyDetails = new ArrayList<ClientFamilyDetailOtherDto>();
 
             List<Object[]> familyDetailsQueryResult = (List<Object[]>) this.genericDao.executeNamedQuery(
                     "getClientFamilyDetailDto", queryParameters);
@@ -1300,8 +1298,12 @@ public class CustomerDaoHibernate implements CustomerDao {
                 final String gender = MessageLookup.getInstance().lookup(genderLookup, userContext);
                 final String livingStatus = MessageLookup.getInstance().lookup(livingStatusLookup, userContext);
 
-                familyDetails.add(new ClientFamilyDetailDto(relationship, familyDisplayName, familyDateOfBirth, gender,
-                        livingStatus));
+                String dateOfBirthAsString = "";
+                if (familyDateOfBirth != null) {
+                    dateOfBirthAsString = DateUtils.makeDateAsSentFromBrowser(familyDateOfBirth);
+                }
+                familyDetails.add(new ClientFamilyDetailOtherDto(relationship, familyDisplayName, familyDateOfBirth, gender,
+                        livingStatus, dateOfBirthAsString));
             }
         } else {
 
@@ -1315,12 +1317,17 @@ public class CustomerDaoHibernate implements CustomerDao {
             }
         }
 
+        Integer age = null;
+        if (dateOfBirth != null) {
+            age = DateUtils.DateDiffInYears(new java.sql.Date(dateOfBirth.getTime()));
+        }
+
         return new ClientDisplayDto(customerId, globalCustNum, displayName, parentCustomerDisplayName, branchId, branchName,
                 externalId, customerFormedByDisplayName, customerActivationDate, customerLevelId, customerStatusId,
                 customerStatusName, trainedDate, dateOfBirth, governmentId, clientUnderGroup, blackListed,
                 loanOfficerId, loanOfficerName, businessActivities, handicapped, maritalStatus, citizenship, ethnicity,
                 educationLevel, povertyStatus, numChildren, isCustomerPicture, areFamilyDetailsRequired,
-                spouseFatherValue, spouseFatherName, familyDetails);
+                spouseFatherValue, spouseFatherName, familyDetails, age);
     }
 
     @Override
@@ -1686,35 +1693,20 @@ public class CustomerDaoHibernate implements CustomerDao {
         return retrieveMasterData(queryParameters);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Iterator<CustomerCustomFieldEntity> getCustomFieldResponses(Short customFieldId) {
+    public List<Object[]> getCustomFieldResponses(List<Short> customFieldIds) {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put("CUSTOM_FIELD_ID", customFieldId);
-        return (Iterator<CustomerCustomFieldEntity>) genericDao.executeNamedQueryIterator("CustomerCustomFieldEntity.getResponses", queryParameters);
+        queryParameters.put("CUSTOM_FIELD_ID", customFieldIds);
+        return (List<Object[]>) this.genericDao.executeNamedQuery("CustomerCustomFieldEntity.getResponses", queryParameters);
     }
 
-    @Override
-    public Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForClientIterator() {
-        Map<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put(MasterConstants.ENTITY_TYPE, EntityType.CLIENT.getValue());
-        return (Iterator<CustomFieldDefinitionEntity>) genericDao
-                .executeNamedQueryIterator(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
-    }
-
-    @Override
-    public Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForGroupIterator() {
-        Map<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put(MasterConstants.ENTITY_TYPE, EntityType.GROUP.getValue());
-        return (Iterator<CustomFieldDefinitionEntity>) genericDao
-                .executeNamedQueryIterator(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
-    }
-
+    @SuppressWarnings("unchecked")
     @Override
     public List<CustomerDto> findCustomersWithGivenPhoneNumber(String phoneNumber) {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("phoneNumberStripped", MifosStringUtils.removeNondigits(phoneNumber));
-        List<CustomerBO> queryResult = (List<CustomerBO>) genericDao
-                .executeNamedQuery("Customer.findCustomersWithGivenPhoneNumber", queryParameters);
+        List<CustomerBO> queryResult = (List<CustomerBO>) genericDao.executeNamedQuery("Customer.findCustomersWithGivenPhoneNumber", queryParameters);
         List<CustomerDto> customerDtos = new ArrayList<CustomerDto>();
         for (CustomerBO customerBO : queryResult) {
             CustomerDto customerDto = new CustomerDto(customerBO.getCustomerId(), customerBO.getDisplayName(),
@@ -1725,10 +1717,62 @@ public class CustomerDaoHibernate implements CustomerDao {
         return customerDtos;
     }
 
+    @SuppressWarnings("unchecked")
     public Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForCenterIterator() {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put(MasterConstants.ENTITY_TYPE, EntityType.CENTER.getValue());
-        return (Iterator<CustomFieldDefinitionEntity>) genericDao
-                .executeNamedQueryIterator(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
+        return (Iterator<CustomFieldDefinitionEntity>) genericDao.executeNamedQueryIterator(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<AccountBO> retrieveAllClosedLoanAndSavingsAccounts(Integer customerId) {
+
+        HashMap<String, Object> queryParameters = new HashMap<String, Object>();
+        queryParameters.put("customerId", customerId);
+        List<AccountBO> queryResult = (List<AccountBO>) this.genericDao.executeNamedQuery("customer.viewallclosedloanandsavingsaccounts", queryParameters);
+
+        List<AccountBO> closedLoanAndSavingsAccounts = new ArrayList<AccountBO>();
+        if (queryResult != null) {
+            closedLoanAndSavingsAccounts.addAll(queryResult);
+        }
+
+        return closedLoanAndSavingsAccounts;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<CustomerDto> findTopOfHierarchyCustomersUnderLoanOfficer(CustomerLevel customerLevel,
+            Short loanOfficerId, Short officeId) {
+
+        List<CustomerDto> activeTopOfHierarchyCustomer = new ArrayList<CustomerDto>();
+
+        HashMap<String, Object> queryParameters = new HashMap<String, Object>();
+        queryParameters.put("customerLevelId", customerLevel.getValue());
+        queryParameters.put("personnelId", loanOfficerId);
+        queryParameters.put("officeId", officeId);
+
+        List<CustomerDto> queryResult = (List<CustomerDto>) this.genericDao.executeNamedQuery(NamedQueryConstants.GET_PARENTCUSTOMERS_FOR_LOANOFFICER, queryParameters);
+        if (queryResult != null) {
+            activeTopOfHierarchyCustomer.addAll(queryResult);
+        }
+
+        return activeTopOfHierarchyCustomer;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<ClientBO> findActiveClientsUnderParent(String searchId, Short officeId) {
+
+        List<ClientBO> activeClients = new ArrayList<ClientBO>();
+
+        HashMap<String, Object> queryParameters = new HashMap<String, Object>();
+        queryParameters.put("SEARCH_STRING", searchId + ".%");
+        queryParameters.put("OFFICE_ID", officeId);
+        List<ClientBO> queryResult = (List<ClientBO>) this.genericDao.executeNamedQuery(NamedQueryConstants.ACTIVE_CLIENTS_UNDER_PARENT, queryParameters);
+        if (queryResult != null) {
+            activeClients.addAll(queryResult);
+        }
+        return activeClients;
     }
 }

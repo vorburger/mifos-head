@@ -21,9 +21,9 @@ package org.mifos.application.servicefacade;
 
 import java.sql.Date;
 
-import org.mifos.accounts.api.CustomerDto;
-import org.mifos.customers.personnel.business.PersonnelDto;
+import org.mifos.dto.domain.CustomerDto;
 import org.mifos.dto.domain.OfficeDetailsDto;
+import org.mifos.dto.domain.PersonnelDto;
 
 /**
  * I am a decorator for {@link CollectionSheetEntryFormDto}.

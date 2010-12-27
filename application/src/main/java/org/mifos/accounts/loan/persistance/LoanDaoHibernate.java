@@ -1,20 +1,19 @@
 package org.mifos.accounts.loan.persistance;
 
-import org.mifos.accounts.business.AccountCustomFieldEntity;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.mifos.accounts.loan.business.LoanBO;
+import org.mifos.accounts.loan.util.helpers.LoanConstants;
 import org.mifos.accounts.savings.persistence.GenericDao;
 import org.mifos.application.NamedQueryConstants;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.master.util.helpers.MasterConstants;
 import org.mifos.application.util.helpers.EntityType;
-import org.mifos.customers.util.helpers.SurveyDto;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import org.mifos.dto.domain.SurveyDto;
 
 public class LoanDaoHibernate implements LoanDao {
 
@@ -66,18 +65,39 @@ public class LoanDaoHibernate implements LoanDao {
         return accountSurveys;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public final Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForLoan() {
+    public final List<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForLoan() {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put(MasterConstants.ENTITY_TYPE, EntityType.LOAN.getValue());
-        return (Iterator<CustomFieldDefinitionEntity>) genericDao.executeNamedQueryIterator(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
+        return (List<CustomFieldDefinitionEntity>) genericDao.executeNamedQuery(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<Object[]> getCustomFieldResponses(List<Short> customFieldIds) {
+        Map<String, Object> queryParameters = new HashMap<String, Object>();
+        queryParameters.put("CUSTOM_FIELD_ID", customFieldIds);
+        return (List<Object[]>) genericDao.executeNamedQuery("AccountCustomFieldEntity.getResponses", queryParameters);
     }
 
     @Override
-    public Iterator<AccountCustomFieldEntity> getCustomFieldResponses(Short customFieldId) {
-        Map<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put("CUSTOM_FIELD_ID", customFieldId);
-        return (Iterator<AccountCustomFieldEntity>) genericDao.executeNamedQueryIterator("AccountCustomFieldEntity.getResponses", queryParameters);
+    public void save(LoanBO loanAccount) {
+        this.genericDao.createOrUpdate(loanAccount);
     }
 
+    @SuppressWarnings("unchecked")
+    public List<LoanBO> findIndividualLoans(final Integer accountId) {
+
+        List<LoanBO> individualLoans = new ArrayList<LoanBO>();
+
+        Map<String, Integer> queryParameters = new HashMap<String, Integer>();
+        queryParameters.put(LoanConstants.LOANACCOUNTID, accountId);
+        List<LoanBO> queryResult = (List<LoanBO>) this.genericDao.executeNamedQuery(NamedQueryConstants.FIND_INDIVIDUAL_LOANS, queryParameters);
+        if (queryResult != null) {
+            individualLoans.addAll(queryResult);
+        }
+
+        return individualLoans;
+    }
 }

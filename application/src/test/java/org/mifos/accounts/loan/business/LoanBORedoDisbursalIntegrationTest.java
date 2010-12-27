@@ -93,6 +93,7 @@ import org.mifos.framework.exceptions.ValidationException;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
 import org.mifos.framework.persistence.TestObjectPersistence;
 import org.mifos.framework.util.helpers.DateUtils;
+import org.mifos.framework.util.helpers.IntegrationTestObjectMother;
 import org.mifos.framework.util.helpers.Money;
 import org.mifos.framework.util.helpers.MoneyUtils;
 import org.mifos.framework.util.helpers.TestGeneralLedgerCode;
@@ -1018,13 +1019,12 @@ public class LoanBORedoDisbursalIntegrationTest extends MifosIntegrationTestCase
         return loanOffering;
     }
 
-    private LoanBO redoLoanAccount(GroupBO group, LoanOfferingBO loanOffering, MeetingBO meeting,
-            Date disbursementDate, List<FeeDto> feeDtos) throws AccountException {
+    private LoanBO redoLoanAccount(GroupBO group, LoanOfferingBO loanOffering, MeetingBO meeting, List<FeeDto> feeDtos) throws AccountException {
         Short numberOfInstallments = Short.valueOf("6");
         List<Date> meetingDates = TestObjectFactory.getMeetingDates(group.getOfficeId(), meeting, numberOfInstallments);
         loanBO = LoanBO.redoLoan(TestUtils.makeUser(), loanOffering, group, AccountState.LOAN_APPROVED, TestUtils
                 .createMoney("300.0"), numberOfInstallments, meetingDates.get(0), false, 1.2, (short) 0, null,
-                feeDtos, null, DOUBLE_ZERO, DOUBLE_ZERO, SHORT_ZERO, SHORT_ZERO, false, null);
+                feeDtos, DOUBLE_ZERO, DOUBLE_ZERO, SHORT_ZERO, SHORT_ZERO, false, null);
         ((LoanBO) loanBO).save();
         new TestObjectPersistence().persist(loanBO);
         return (LoanBO) loanBO;
@@ -1037,15 +1037,16 @@ public class LoanBORedoDisbursalIntegrationTest extends MifosIntegrationTestCase
         new TestObjectPersistence().persist(loan);
     }
 
-    private void applyPaymentForLoan(UserContext userContext, LoanBO loan, Date paymentDate, Money money)
-            throws AccountException {
+    private void applyPaymentForLoan(UserContext userContext, LoanBO loan, Date paymentDate, Money money) {
         loan.setUserContext(userContext);
+
+        PersonnelBO loggedInUser = new PersonnelPersistence().findPersonnelById(userContext.getId());
+
         List<AccountActionDateEntity> accntActionDates = new ArrayList<AccountActionDateEntity>();
         accntActionDates.addAll(loan.getAccountActionDates());
 
-        PaymentData paymentData = loan.createPaymentData(userContext, money, paymentDate, null, null, Short
-                .valueOf("1"));
-        loan.applyPaymentWithPersist(paymentData);
+        PaymentData paymentData = loan.createPaymentData(money, paymentDate, null, null, Short.valueOf("1"), loggedInUser);
+        IntegrationTestObjectMother.applyAccountPayment(loan, paymentData);
         new TestObjectPersistence().persist(loan);
     }
 
@@ -1077,7 +1078,7 @@ public class LoanBORedoDisbursalIntegrationTest extends MifosIntegrationTestCase
         // group = createGroup(userContext, groupTemplate, disbursementDate);
 
         LoanOfferingBO loanOffering = createLoanOffering(userContext, meeting, disbursementDate);
-        return redoLoanAccount(group, loanOffering, meeting, disbursementDate, feeDtos);
+        return redoLoanAccount(group, loanOffering, meeting, feeDtos);
     }
 
     private LoanBO redoLoanWithMeetingToday(UserContext userContext, Date disbursementDate, List<FeeDto> feeDtos)
@@ -1093,7 +1094,7 @@ public class LoanBORedoDisbursalIntegrationTest extends MifosIntegrationTestCase
         group = createGroup(userContext, groupTemplate, disbursementDate);
 
         LoanOfferingBO loanOffering = createLoanOffering(userContext, meeting, disbursementDate);
-        return redoLoanAccount((GroupBO)group, loanOffering, meeting, disbursementDate, feeDtos);
+        return redoLoanAccount((GroupBO)group, loanOffering, meeting, feeDtos);
     }
 
     protected LoanBO redoLoanWithMondayMeetingAndVerify(UserContext userContext, int numberOfDaysInPast,

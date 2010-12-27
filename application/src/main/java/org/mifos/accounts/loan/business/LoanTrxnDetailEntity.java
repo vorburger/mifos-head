@@ -20,13 +20,6 @@
 
 package org.mifos.accounts.loan.business;
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.mifos.accounts.business.AccountFeesActionDetailEntity;
 import org.mifos.accounts.business.AccountFeesEntity;
 import org.mifos.accounts.business.AccountFlagMapping;
@@ -37,11 +30,17 @@ import org.mifos.accounts.exceptions.AccountException;
 import org.mifos.accounts.util.helpers.AccountActionTypes;
 import org.mifos.accounts.util.helpers.AccountState;
 import org.mifos.accounts.util.helpers.AccountStateFlag;
-import org.mifos.accounts.util.helpers.LoanPaymentData;
 import org.mifos.application.master.persistence.MasterPersistence;
 import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.framework.persistence.Persistence;
 import org.mifos.framework.util.helpers.Money;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /*
  * LoanTrxnDetailEntity encapsulates a financial transaction
@@ -63,6 +62,8 @@ public class LoanTrxnDetailEntity extends AccountTrxnEntity {
     private final Money miscPenaltyAmount;
 
     private final Set<FeesTrxnDetailEntity> feesTrxnDetails;
+
+    private CalculatedInterestOnPayment calculatedInterestOnPayment;
 
     public Set<FeesTrxnDetailEntity> getFeesTrxnDetails() {
         return feesTrxnDetails;
@@ -122,24 +123,24 @@ public class LoanTrxnDetailEntity extends AccountTrxnEntity {
         }
     }
 
-    public LoanTrxnDetailEntity(AccountPaymentEntity accountPaymentEntity, LoanPaymentData loanPaymentData,
-            PersonnelBO personnel, java.util.Date transactionDate, AccountActionTypes accountActionType,
-            Money amount, String comments, Persistence persistence) {
-
-        super(accountPaymentEntity, accountActionType, loanPaymentData.getInstallmentId(), loanPaymentData
-                .getAccountActionDate().getActionDate(), personnel, null, transactionDate, amount, comments,
+    public LoanTrxnDetailEntity(AccountPaymentEntity accountPaymentEntity, LoanScheduleEntity loanScheduleEntity,
+                                PersonnelBO personnel, Date transactionDate, AccountActionTypes accountActionType,
+                                String comments, Persistence persistence) {
+        super(accountPaymentEntity, accountActionType, loanScheduleEntity.getInstallmentId(), loanScheduleEntity
+                .getActionDate(), personnel, null, transactionDate, loanScheduleEntity.getPaymentAllocation().getTotalPaid(), comments,
                 null, persistence);
-        interestAmount = loanPaymentData.getInterestPaid();
-        penaltyAmount = loanPaymentData.getPenaltyPaid();
-        principalAmount = loanPaymentData.getPrincipalPaid();
-        miscFeeAmount = loanPaymentData.getMiscFeePaid();
-        miscPenaltyAmount = loanPaymentData.getMiscPenaltyPaid();
+        PaymentAllocation paymentAllocation = loanScheduleEntity.getPaymentAllocation();
+        interestAmount = paymentAllocation.getTotalInterestPaid();
+        penaltyAmount = paymentAllocation.getPenaltyPaid();
+        principalAmount = paymentAllocation.getPrincipalPaid();
+        miscFeeAmount = paymentAllocation.getMiscFeePaid();
+        miscPenaltyAmount = paymentAllocation.getMiscPenaltyPaid();
         feesTrxnDetails = new HashSet<FeesTrxnDetailEntity>();
-        LoanScheduleEntity loanSchedule = (LoanScheduleEntity) loanPaymentData.getAccountActionDate();
-        for (AccountFeesActionDetailEntity accountFeesActionDetail : loanSchedule.getAccountFeesActionDetails()) {
-            if (loanPaymentData.getFeesPaid().containsKey(accountFeesActionDetail.getFee().getFeeId())) {
-                addFeesTrxnDetail(new FeesTrxnDetailEntity(this, accountFeesActionDetail.getAccountFee(),
-                        loanPaymentData.getFeesPaid().get(accountFeesActionDetail.getFee().getFeeId())));
+        for (AccountFeesActionDetailEntity accountFeesActionDetail : loanScheduleEntity.getAccountFeesActionDetails()) {
+            Integer feeId = accountFeesActionDetail.getAccountFeesActionDetailId();
+            if(paymentAllocation.isFeeAllocated(feeId)) {
+                Money feePaid = paymentAllocation.getFeePaid(feeId);
+                addFeesTrxnDetail(new FeesTrxnDetailEntity(this, accountFeesActionDetail.getAccountFee(), feePaid));
             }
         }
     }
@@ -163,7 +164,7 @@ public class LoanTrxnDetailEntity extends AccountTrxnEntity {
                 .negate(), comment, this, getPrincipalAmount().negate(), getInterestAmount().negate(),
                 getPenaltyAmount().negate(), getMiscFeeAmount().negate(), getMiscPenaltyAmount().negate(), null,
                 new MasterPersistence());
-
+        reverseAccntTrxn.setCalculatedInterestOnPayment(this.getCalculatedInterestOnPayment());
 
         if (null != getFeesTrxnDetails() && getFeesTrxnDetails().size() > 0) {
             logger.debug(
@@ -222,5 +223,41 @@ public class LoanTrxnDetailEntity extends AccountTrxnEntity {
         } else {
             return AccountActionTypes.LOAN_ADJUSTMENT;
         }
+    }
+
+    Money totalPenaltyPaid() {
+        return getPenaltyAmount().add(getMiscPenaltyAmount());
+    }
+
+    Money totalAndMiscFeesPaid() {
+        return getFeeAmount().add(getMiscFeeAmount());
+    }
+
+    public boolean isNotEmptyTransaction() {
+        return getInstallmentId() != null && !getInstallmentId().equals(Short.valueOf("0"));
+    }
+
+    void adjustFees(AccountFeesActionDetailEntity accntFeesAction) {
+        FeesTrxnDetailEntity feesTrxnDetailEntity = getFeesTrxn(accntFeesAction.getAccountFeeId());
+        if (feesTrxnDetailEntity != null) {
+            ((LoanFeeScheduleEntity) accntFeesAction).adjustFees(feesTrxnDetailEntity);
+        }
+    }
+
+    public CalculatedInterestOnPayment getCalculatedInterestOnPayment() {
+        return calculatedInterestOnPayment;
+    }
+
+    public void setCalculatedInterestOnPayment(CalculatedInterestOnPayment calculatedInterestOnPayment) {
+        this.calculatedInterestOnPayment = calculatedInterestOnPayment;
+    }
+
+    public void computeAndSetCalculatedInterestOnPayment(Money originalInterest, Money extraInterestPaid, Money interestDueTillPaid) {
+        CalculatedInterestOnPayment calculatedInterestOnPayment = new CalculatedInterestOnPayment();
+        calculatedInterestOnPayment.setLoanTrxnDetailEntity(this);
+        calculatedInterestOnPayment.setOriginalInterest(originalInterest);
+        calculatedInterestOnPayment.setExtraInterestPaid(extraInterestPaid);
+        calculatedInterestOnPayment.setInterestDueTillPaid(interestDueTillPaid);
+        setCalculatedInterestOnPayment(calculatedInterestOnPayment);
     }
 }

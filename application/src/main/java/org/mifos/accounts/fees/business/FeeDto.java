@@ -92,6 +92,10 @@ public class FeeDto implements DataTransferObject {
         this.feeRemoved = YesNoFlag.NO.getValue();
     }
 
+    public void setFeeSchedule(String feeSchedule) {
+        this.feeSchedule = feeSchedule;
+    }
+
     public String getFeeSchedule() {
         return feeSchedule;
     }
@@ -110,6 +114,10 @@ public class FeeDto implements DataTransferObject {
 
     public void setAmount(String amount) {
         this.amount = amount;
+    }
+
+    public void setPeriodic(boolean periodic) {
+        this.periodic = periodic;
     }
 
     public boolean isPeriodic() {
@@ -176,5 +184,13 @@ public class FeeDto implements DataTransferObject {
      //  Rate fees do not have currency hence the currencyId will be null for them,
      //  when fee has a currency  then it should match loan account currency id
        return (getCurrencyId()== null || getCurrencyId().equals(currencyId));
+    }
+
+    public boolean isMonthly() {
+        return RecurrenceType.MONTHLY.equals(this.frequencyType);
+    }
+
+    public boolean isWeekly() {
+        return RecurrenceType.WEEKLY.equals(this.frequencyType);
     }
 }

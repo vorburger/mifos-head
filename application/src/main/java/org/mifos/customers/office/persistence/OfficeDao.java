@@ -21,13 +21,11 @@
 package org.mifos.customers.office.persistence;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.customers.exceptions.CustomerException;
 import org.mifos.customers.office.business.OfficeBO;
-import org.mifos.customers.office.business.OfficeCustomFieldEntity;
 import org.mifos.customers.office.business.OfficeLevelEntity;
 import org.mifos.customers.office.exceptions.OfficeException;
 import org.mifos.customers.office.util.helpers.OfficeLevel;
@@ -39,7 +37,7 @@ import org.mifos.security.util.UserContext;
 
 public interface OfficeDao {
 
-    OfficeBO findOfficeById(Short officeIdValue);
+    OfficeBO findOfficeById(Short officeId);
 
     OfficeDto findOfficeDtoById(Short officeId);
 
@@ -77,7 +75,9 @@ public interface OfficeDao {
 
     void validateNoOfficesExistGivenOfficeLevel(OfficeLevel regionaloffice);
 
-    Iterator<OfficeCustomFieldEntity> getCustomFieldResponses(Short customFieldId);
+    List<Object[]> getCustomFieldResponses(List<Short> customFieldIds);
 
-    Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForOffice();
+    List<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForOffice();
+
+    List<OfficeDetailsDto> findActiveBranches(Short branchId);
 }

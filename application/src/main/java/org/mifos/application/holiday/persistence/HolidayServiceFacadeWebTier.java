@@ -20,22 +20,30 @@
 
 package org.mifos.application.holiday.persistence;
 
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 
+import org.joda.time.DateTime;
+import org.joda.time.Days;
+import org.joda.time.LocalDate;
+import org.mifos.accounts.loan.util.helpers.LoanExceptionConstants;
 import org.mifos.application.admin.servicefacade.HolidayServiceFacade;
+import org.mifos.application.holiday.business.Holiday;
 import org.mifos.application.holiday.business.HolidayBO;
 import org.mifos.application.holiday.business.service.HolidayService;
 import org.mifos.application.holiday.util.helpers.RepaymentRuleTypes;
+import org.mifos.calendar.WorkingDay;
+import org.mifos.config.FiscalCalendarRules;
 import org.mifos.dto.domain.HolidayDetails;
 import org.mifos.dto.domain.OfficeHoliday;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
+import org.mifos.service.BusinessRuleException;
 
 public class HolidayServiceFacadeWebTier implements HolidayServiceFacade {
 
@@ -49,7 +57,6 @@ public class HolidayServiceFacadeWebTier implements HolidayServiceFacade {
 
     @Override
     public void createHoliday(HolidayDetails holidayDetails, List<Short> officeIds) {
-
         this.holidayService.create(holidayDetails, officeIds);
     }
 
@@ -115,5 +122,44 @@ public class HolidayServiceFacadeWebTier implements HolidayServiceFacade {
             //}
         }
         return holidayNames;
+    }
+
+    @Override
+    public boolean isWorkingDay(Calendar day, Short officeId) {
+        return holidayService.isWorkingDay(day, officeId);
+    }
+
+    @Override
+    public Calendar getNextWorkingDay(Calendar day, Short officeId) {
+        return holidayService.getNextWorkingDay(day, officeId);
+    }
+
+    @Override
+    public Date getNextWorkingDay(Date day, Short officeId) {
+        return holidayService.getNextWorkingDay(day, officeId);
+    }
+
+    @Override
+    public void validateDisbursementDateForNewLoan(Short officeId, DateTime disbursementDate) {
+
+        List<Days> workingDays = new FiscalCalendarRules().getWorkingDaysAsJodaTimeDays();
+        validateDisbursementDateIsWorkingDay(disbursementDate, workingDays);
+
+        List<Holiday> holidays = holidayDao.findAllHolidaysThisYearAndNext(officeId);
+        validateDisbursementDateIsNotInHoliday(disbursementDate, holidays);
+    }
+
+    private void validateDisbursementDateIsWorkingDay(DateTime disbursementDate, List<Days> workingDays) {
+        if (WorkingDay.isNotWorkingDay(disbursementDate, workingDays)) {
+            throw new BusinessRuleException(LoanExceptionConstants.DISBURSEMENTDATE_MUST_BE_A_WORKING_DAY);
+        }
+    }
+
+    private void validateDisbursementDateIsNotInHoliday (DateTime disbursementDate, List<Holiday> holidays) {
+        for (Holiday holiday : holidays) {
+            if (holiday.encloses(disbursementDate)) {
+                throw new BusinessRuleException(LoanExceptionConstants.DISBURSEMENTDATE_MUST_NOT_BE_IN_A_HOLIDAY);
+            }
+        }
     }
 }

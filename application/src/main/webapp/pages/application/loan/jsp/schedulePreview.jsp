@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,6 +57,9 @@ explanation of the license and how it is applied.
         <STYLE TYPE="text/css"><!-- @import url(pages/css/jquery/jquery-ui.css); --></STYLE>
         <script type="text/javascript" src="pages/js/jquery/jquery-1.4.2.min.js"></script>
         <script type="text/javascript" src="pages/js/jquery/jquery-ui.min.js"></script>
+        <script type="text/javascript" src="pages/js/jquery/jquery.datePicker.min-2.1.2.js"></script>
+        <script type="text/javascript" src="pages/js/jquery/jquery.datePicker.configuration.js"></script>
+        <STYLE TYPE="text/css"><!-- @import url(pages/css/datepicker/datepicker.css); --></STYLE>
         <script type="text/javascript" src="pages/framework/js/CommonUtilities.js"></script>
 		<!--[if IE]><script type="text/javascript" src="pages/js/jquery/jquery.bgiframe.js"></script><![endif]-->
 		<SCRIPT SRC="pages/framework/js/CommonUtilities.js"></SCRIPT>
@@ -383,18 +386,22 @@ explanation of the license and how it is applied.
                                                             <td width="5%" class="drawtablerow" align="center" ><b><mifos:mifoslabel name="loan.total" /></b></td>
                                                             <td width="30%" class="drawtablerow" align="center" ><b><mifos:mifoslabel name="loan.amount" /></b></td>
                                                         </tr>
-                                                        
-                                                        
-                                                        <c:forEach var="paymentDataBeans" items="${loanAccountActionForm.paymentDataBeans}">
+
+
+                                                        <c:forEach var="paymentDataBeans" items="${loanAccountActionForm.paymentDataBeans}" varStatus="loopStatus">
                                                         <tr>
                                                             <td class="drawtablerow" align="center">
                                                                 <c:out value="${paymentDataBeans.installment.installment}" />
                                                             </td>
                                                             <td class="drawtablerow" align="center">
-                                                                <c:out value="${paymentDataBeans.installment.dueDate}" />
+                                                                <html-el:text styleId="paymentDataBeans.dueDate.${loopStatus.index}"
+                                                                styleClass="date-pick-payment-data-beans" indexed="true"
+                                                                name="paymentDataBeans" property="dueDate" size="10" />
                                                             </td>
                                                             <td class="drawtablerow" align="center">
-                                                                <date:datetag name="paymentDataBeans" indexed="true" property="date" />
+                                                            	<html-el:text styleId="paymentDataBeans.date.${loopStatus.index}"
+                                                            	styleClass="date-pick-payment-data-beans" indexed="true"
+                                                            	name="paymentDataBeans" property="date" size="10" />
                                                             </td>
                                                             <td> &nbsp; </td>
                                                             <td class="drawtablerow" align="center">
@@ -407,7 +414,15 @@ explanation of the license and how it is applied.
                                                                 <c:out value="${paymentDataBeans.installment.fees}" />
                                                             </td>
                                                             <td class="drawtablerow" align="center">
-                                                                <c:out value="${paymentDataBeans.installment.total}" />
+                                                                <c:choose>
+                                                                    <c:when test="${loopStatus.index == (fn:length(loanAccountActionForm.paymentDataBeans) - 1)}">
+                                                                        <c:out value="${paymentDataBeans.total}" />
+                                                                    </c:when>
+                                                                    <c:otherwise>
+                                                                        <html-el:text styleId="paymentDataBeans.total"
+                                                                        indexed="true" name="paymentDataBeans" property="total" size="10" />
+                                                                    </c:otherwise>
+                                                                </c:choose>
                                                             </td>
                                                             <td class="drawtablerow" align="center">
                                                                 <html-el:text styleId="schedulePreview.input.loanAmount" name="paymentDataBeans" indexed="true" property="amount" size="10" />
@@ -429,7 +444,7 @@ explanation of the license and how it is applied.
 									<br>
 										<tr>
 											<td align="center">
-											    <c:if test="${loanAccountActionForm.variableInstallmentsAllowed}">
+											    <c:if test="${loanAccountActionForm.variableInstallmentsAllowed && requestScope.perspective != 'redoLoan'}">
                                                     <html-el:submit styleId="schedulePreview.button.validate" property="validateBtn" styleClass="buttn" >
                                                         <mifos:mifoslabel name="loan.validate" />
                                                     </html-el:submit>
@@ -445,7 +460,7 @@ explanation of the license and how it is applied.
 											</td>
 										</tr>
 									<br/>
-                                        <c:if test="${loanAccountActionForm.cashflowDataHtmlBeans != null}">
+                                        <c:if test="${loanAccountActionForm.cashflowDataDtos != null}">
 										<tr>
                                             <td>
                                                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -464,23 +479,23 @@ explanation of the license and how it is applied.
                                                                 <td width="22%" class="drawtablerow" align="center" ><b><mifos:mifoslabel name="loan.totalinstallmentaspercent" /></b></td>
                                                                 <td width="17%" class="drawtablerow" align="left" ><b><mifos:mifoslabel name="loan.cashflownotes" /></b></td>
                                                             </tr>
-                                                                <c:forEach var="cashflowDataHtmlBean" items="${loanAccountActionForm.cashflowDataHtmlBeans}" varStatus="loopStatus">
+                                                                <c:forEach var="cashflowDataDto" items="${loanAccountActionForm.cashflowDataDtos}" varStatus="loopStatus">
                                                                 <tr>
                                                                     <td class="drawtablerow" align="left">
-                                                                        <mifos:mifoslabel name="${cashflowDataHtmlBean.month}" bundle="cashflow_messages" />
-                                                                        <c:out value="${cashflowDataHtmlBean.year}" />
+                                                                    	<c:out value="${cashflowDataDto.month}" />
+                                                                        <c:out value="${cashflowDataDto.year}" />
                                                                     </td>
                                                                     <td class="drawtablerow" align="center">
-                                                                        <c:out value="${cashflowDataHtmlBean.cumulativeCashFlow}" />
+                                                                        <c:out value="${cashflowDataDto.cumulativeCashFlow}" />
                                                                     </td>
                                                                     <td class="drawtablerow" align="center">
-																		<c:out value="${cashflowDataHtmlBean.diffCumulativeCashflowAndInstallment}" />
+																		<c:out value="${cashflowDataDto.diffCumulativeCashflowAndInstallment}" />
                                                                     </td>
                                                                     <td class="drawtablerow" align="center">
-                                                                        <c:out value="${cashflowDataHtmlBean.diffCumulativeCashflowAndInstallmentPercent}" />
+                                                                        <c:out value="${cashflowDataDto.diffCumulativeCashflowAndInstallmentPercent}" />
                                                                     </td>
                                                                     <td class="drawtablerow" align="left">
-                                                                        <c:out value="${cashflowDataHtmlBean.notes}" />
+                                                                        <c:out value="${cashflowDataDto.notes}" />
                                                                     </td>
                                                                 </tr>
                                                                 </c:forEach>

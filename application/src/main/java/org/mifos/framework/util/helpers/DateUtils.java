@@ -69,6 +69,24 @@ public class DateUtils {
         internalLocale = new LocalizationConverter().getDateLocale();
     }
 
+    public static String getShortDateFormat(Locale locale) {
+        String dateSeparator = DateUtils.getDateSeparatorByLocale(locale, DateFormat.MEDIUM);
+        return String.format("dd%sMMM%syyyy", dateSeparator, dateSeparator);
+    }
+
+
+    public static boolean sameMonthYear(Date firstDate, Date secondDate) {
+        Calendar first = Calendar.getInstance();
+        first.setTime(firstDate);
+        Calendar second = Calendar.getInstance();
+        second.setTime(secondDate);
+        return sameMonthYear(first,second);
+    }
+
+    public static boolean sameMonthYear(Calendar first, Calendar second) {
+        return ((first.get(Calendar.MONTH) == second.get(Calendar.MONTH)) && (first.get(Calendar.YEAR) == second.get(Calendar.YEAR)));
+    }
+
     public static String convertUserToDbFmt(String userDate, String userPattern) throws InvalidDateException {
         try {
             SimpleDateFormat userFormat = new SimpleDateFormat(userPattern, dateLocale);
@@ -497,8 +515,12 @@ public class DateUtils {
     }
 
     public static String makeDateAsSentFromBrowser() {
-        Date date = new DateTimeService().getCurrentJavaDateTime();
-        return makeDateAsSentFromBrowser(date);
+        return makeDateAsSentFromBrowser(getCurrentJavaDateTime());
+    }
+
+    // TODO: Needs a unit test - buddy/johnvic
+    public static Date getCurrentJavaDateTime() {
+        return new DateTimeService().getCurrentJavaDateTime();
     }
 
     public static String makeDateAsSentFromBrowser(Date date) {
@@ -719,4 +741,18 @@ public class DateUtils {
         String userfmt = convertToCurrentDateFormat(format.toPattern());
         return convertUserToDbFmt(givenDate, userfmt);
     }
+
+    // TODO: Add unit tests
+    public static boolean firstLessOrEqualSecond(Date firstDate, Date secondDate) {
+        Calendar firstCalendarDate = Calendar.getInstance();
+        firstCalendarDate.setTime(firstDate);
+
+        Calendar secondCalendarDate = Calendar.getInstance();
+        secondCalendarDate.setTime(secondDate);
+
+        firstCalendarDate.set(Calendar.DAY_OF_MONTH, 1);
+
+        return firstCalendarDate.compareTo(secondCalendarDate) <= 0;
+    }
+
 }

@@ -2,6 +2,7 @@ package org.mifos.test.acceptance.util;
 
 import com.thoughtworks.selenium.Selenium;
 import org.mifos.test.acceptance.framework.admin.AdminPage;
+import org.mifos.test.acceptance.framework.admin.FeesCreatePage;
 import org.mifos.test.acceptance.framework.center.MeetingParameters;
 import org.mifos.test.acceptance.framework.client.CreateClientEnterMfiDataPage;
 import org.mifos.test.acceptance.framework.client.CreateClientEnterPersonalDataPage;
@@ -66,7 +67,21 @@ public class TestDataSetup {
                 submit().navigateToClientViewDetailsPage().
                 navigateToCustomerChangeStatusPage().
                 submitAndGotoCustomerChangeStatusPreviewDataPage(setApprovalStatus()).
-                submitAndGotoClientViewDetailsPage();
+                submitAndGotoClientViewDetailsPage().
+                navigateToEditMeetingSchedule().
+                editClientMeeting(setMeetingScheduleParameters());
+    }
+
+    public void createFee(FeesCreatePage.SubmitFormParameters feeParameters) throws SQLException {
+        if (applicationDatabaseOperation.doesFeeExist(feeParameters.getFeeName())) {
+            return;
+        }
+        new NavigationHelper(selenium).
+                navigateToAdminPage().
+                navigateToFeesCreate().
+                fillFeesParameters(feeParameters).
+                submitPageAndGotoPreviewFeesCreatePage().
+                submit();
     }
 
     private CustomerChangeStatusPage.SubmitFormParameters setApprovalStatus() {
@@ -105,5 +120,12 @@ public class TestDataSetup {
         clientPersonalInfoParameters.setSpouseFirstName("father");
         clientPersonalInfoParameters.setSpouseLastName("lastname" + StringUtil.getRandomString(8));
         return clientPersonalInfoParameters;
+    }
+
+    public void addDecliningPrincipalBalance() throws SQLException {
+        if (!applicationDatabaseOperation.doesDecliningPrincipalBalanceExist()) {
+            applicationDatabaseOperation.insertDecliningPrincipalBalanceInterestType();
+        }
+        //To change body of created methods use File | Settings | File Templates.
     }
 }

@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,8 @@ explanation of the license and how it is applied.
 		<html-el:form method="post" action="/loanAccountAction.do">
 		<html-el:hidden property="currentFlowKey" value="${requestScope.currentFlowKey}" />
 		<c:set value="${session:getFromSession(sessionScope.flowManager,requestScope.currentFlowKey,'BusinessKey')}" var="BusinessKey" />
+		<c:set value="${session:getFromSession(sessionScope.flowManager,requestScope.currentFlowKey,'originalScheduleIsAvailable')}"
+		                                                var="originalScheduleIsAvailable" />
 			<table width="95%" border="0" cellpadding="0" cellspacing="0">
 				<tr>
 					<td class="bluetablehead05">
@@ -60,7 +62,7 @@ explanation of the license and how it is applied.
 								</span>
 								<mifos:mifoslabel name="loan.repayment_sched" bundle="loanUIResources" />
                                 <c:choose>
-                                        <c:when test="${BusinessKey.decliningPrincipalBalance}">
+                                        <c:when test="${BusinessKey.decliningBalanceInterestRecalculation}">
                                             <html-el:text property="scheduleViewDate" styleId="scheduleViewDate" name="loanAccountActionForm" styleClass="date-pick required" size="10" />
                                             <html-el:button styleId="loanRepayment.view" property="viewScheduleButton"
                                                 onclick="LoanRepayment.submit(this.form,'getLoanRepaymentSchedule&accountId=${param.accountId}&randomNUm=${sessionScope.randomNUm}&currentFlowKey=${requestScope.currentFlowKey}');" styleClass="buttn" >
@@ -72,6 +74,16 @@ explanation of the license and how it is applied.
                                         </c:otherwise>
                                 </c:choose>
 							</td>
+							<td>
+                            <c:choose>
+                                <c:when test="${originalScheduleIsAvailable}">
+                                    <html-el:link styleId="loanRepayment.link.original_schedule"
+                                    href="loanAccountAction.do?method=viewOriginalSchedule&accountId=${BusinessKey.accountId}&randomNUm=${sessionScope.randomNUm}&currentFlowKey=${requestScope.currentFlowKey}">
+                                        <mifos:mifoslabel name="loan.view_original_schedule" />
+                                    </html-el:link>
+								</c:when>
+							</c:choose>
+							 </td>
 						</tr>
                         <tr>
                         <logic:messagesPresent>

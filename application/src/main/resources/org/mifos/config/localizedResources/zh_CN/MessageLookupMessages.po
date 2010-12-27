@@ -1,11 +1,10 @@
-#. extracted from MessageLookupMessages.properties
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-08-02 03:47+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"POT-Creation-Date: 2010-11-28 11:25+0530\n"
+"PO-Revision-Date: 2010-12-01 14:38+0800\n"
+"Last-Translator: \n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -23,27 +22,27 @@ msgstr "账户操作"
 
 #: AccountActionTypes.DEPOSIT
 msgid "Deposit"
-msgstr "Deposit"
+msgstr "存款"
 
 #: AccountActionTypes.DISBURSAL
 msgid "Disbursal"
-msgstr "Disbursal"
+msgstr "放款"
 
 #: AccountActionTypes.FEE_REPAYMENT
 msgid "Fee"
-msgstr "Fee"
+msgstr "费用"
 
 #: AccountActionTypes.LOAN_REPAYMENT
 msgid "Loan Repayment"
-msgstr "Loan Repayment"
+msgstr "还款"
 
 #: AccountActionTypes.WITHDRAWAL
 msgid "Withdrawal"
-msgstr "Withdrawal"
+msgstr "提款"
 
 #: AccountFlags.Label
 msgid "AccountFlags"
-msgstr "AccountFlags"
+msgstr "账户标志"
 
 #: AccountState.Label
 msgid "Loan Status"
@@ -79,15 +78,15 @@ msgstr "职业"
 
 #: CategoryType.Label
 msgid "CategoryTypes"
-msgstr "CategoryTypes"
+msgstr "类别"
 
 #: Center.Label
 msgid "Center"
-msgstr "行政村"
+msgstr "中心"
 
 #: CenterStatus.Label
 msgid "Center Status"
-msgstr "行政村状态"
+msgstr "中心状态"
 
 #: Citizenship.Label
 msgid "Citizenship"
@@ -107,24 +106,24 @@ msgstr "客户状态"
 
 #: CollateralTypes.Label
 msgid "CollateralTypes"
-msgstr "CollateralTypes"
+msgstr "抵押类"
 
 #: CustomFieldType.ALPHA_NUMERIC
 msgid "Alpha Numeric"
-msgstr "Alpha Numeric"
+msgstr "数字及字母"
 
 #: CustomFieldType.DATE
 msgctxt "CustomFieldType.DATE"
 msgid "Date"
-msgstr "Date"
+msgstr "日期"
 
 #: CustomFieldType.NUMERIC
 msgid "Numeric"
-msgstr "Numeric"
+msgstr "数字"
 
 #: CustomerAttendance.Label
 msgid "CustomerAttendance"
-msgstr "CustomerAttendance"
+msgstr "客户出席"
 
 #: CustomerStatus.Label
 msgid "Customer Status"
@@ -145,11 +144,11 @@ msgstr "描述"
 
 #: DistanceFromBoToCenter.Label
 msgid "Distance from BO to Center"
-msgstr "BO到行政村的距离"
+msgstr "分支机构到中心的距离"
 
 #: DistanceFromHoToBO.Label
 msgid "Distance from HO to BO for office"
-msgstr "HO到机构BO的距离"
+msgstr "总部到机构分支机构的距离"
 
 #: EducationLevel.Label
 msgid "EducationLevel"
@@ -364,27 +363,27 @@ msgstr "产品状态"
 
 #: RankOfDay.FIRST
 msgid "First"
-msgstr ""
+msgstr "第一"
 
 #: RankOfDay.SECOND
 msgid "Second"
-msgstr ""
+msgstr "第二"
 
 #: RankOfDay.THIRD
 msgid "Third"
-msgstr ""
+msgstr "第三"
 
 #: RankOfDay.FOURTH
 msgid "Fourth"
-msgstr ""
+msgstr "第四"
 
 #: RankOfDay.LAST
 msgid "Last"
-msgstr ""
+msgstr "最终"
 
 #: RecommendedAmtUnit.Label
 msgid "REC AMNT UNIT"
-msgstr "REC AMNT UNIT"
+msgstr "金额推荐单位"
 
 #: ReplacementStatus.Label
 msgid "Replacement Status"
@@ -470,3 +469,6 @@ msgstr "否"
 #: YesNoFlag.YES
 msgid "Yes"
 msgstr "是"
+
+#~ msgid "放款"
+#~ msgstr "Disbursal"

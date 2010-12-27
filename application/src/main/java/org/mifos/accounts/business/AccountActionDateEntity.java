@@ -20,6 +20,7 @@
 
 package org.mifos.accounts.business;
 
+import org.joda.time.LocalDate;
 import org.mifos.accounts.util.helpers.PaymentStatus;
 import org.mifos.application.master.business.MifosCurrency;
 import org.mifos.customers.business.CustomerBO;
@@ -33,7 +34,7 @@ public abstract class AccountActionDateEntity extends AbstractEntity implements 
     protected final Integer actionDateId;
     protected AccountBO account;
     protected final CustomerBO customer;
-    protected final Short installmentId;
+    protected Short installmentId;
     protected Date actionDate;
     protected Short paymentStatus;
     protected Date paymentDate;
@@ -85,11 +86,11 @@ public abstract class AccountActionDateEntity extends AbstractEntity implements 
     /**
      * Most callers will want to call {@link #isPaid()} instead.
      */
-    Short getPaymentStatus() {
+    public Short getPaymentStatus() {
         return paymentStatus;
     }
 
-    private PaymentStatus getPaymentStatusAsEnum() {
+    public PaymentStatus getPaymentStatusAsEnum() {
         return PaymentStatus.fromInt(paymentStatus);
     }
 
@@ -113,8 +114,8 @@ public abstract class AccountActionDateEntity extends AbstractEntity implements 
         return this.getInstallmentId().compareTo(obj.getInstallmentId());
     }
 
-    protected MifosCurrency getCurrency() {
-        return getAccount().getCurrency();
+    public MifosCurrency getCurrency() {
+        return account.getCurrency();
     }
 
     public boolean isDueToday() {
@@ -124,5 +125,17 @@ public abstract class AccountActionDateEntity extends AbstractEntity implements 
 
     public void setAccount(AccountBO account) {
         this.account = account;
+    }
+
+    public boolean isBeforeOrOn(LocalDate date) {
+        return new LocalDate(this.actionDate).isBefore(date) || new LocalDate(this.actionDate).isEqual(date);
+    }
+
+    public boolean isNotPaid() {
+        return !isPaid();
+    }
+
+    public void setInstallmentId(Short installmentId) {
+        this.installmentId = installmentId;
     }
 }

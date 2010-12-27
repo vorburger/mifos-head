@@ -57,7 +57,6 @@ import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.business.CustomerCustomFieldEntity;
 import org.mifos.customers.business.CustomerStatusEntity;
 import org.mifos.customers.business.CustomerStatusFlagEntity;
-import org.mifos.accounts.api.CustomerDto;
 import org.mifos.accounts.savings.persistence.GenericDaoHibernate;
 import org.mifos.customers.center.business.CenterBO;
 import org.mifos.customers.checklist.business.CustomerCheckListBO;
@@ -77,9 +76,10 @@ import org.mifos.customers.util.helpers.CustomerConstants;
 import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.util.helpers.CustomerSearchConstants;
 import org.mifos.customers.util.helpers.CustomerStatus;
-import org.mifos.customers.util.helpers.LoanDetailDto;
 import org.mifos.customers.util.helpers.Param;
 import org.mifos.customers.util.helpers.QueryParamConstants;
+import org.mifos.dto.domain.CustomerDto;
+import org.mifos.dto.domain.LoanDetailDto;
 import org.mifos.framework.exceptions.HibernateProcessException;
 import org.mifos.framework.exceptions.HibernateSearchException;
 import org.mifos.framework.exceptions.PersistenceException;
@@ -212,6 +212,10 @@ public class CustomerPersistence extends Persistence {
         return queryResult;
     }
 
+    /**
+     * @deprecated - use customerDao findTopOfHierarchyCustomers
+     */
+    @Deprecated
     public List<CustomerDto> getActiveParentList(final Short personnelId, final Short customerLevelId,
             final Short officeId) throws PersistenceException {
         HashMap<String, Object> queryParameters = new HashMap<String, Object>();
@@ -691,14 +695,14 @@ public class CustomerPersistence extends Persistence {
         return queryResult;
     }
 
+    @SuppressWarnings("unchecked")
     public List<CustomerCheckListBO> getStatusChecklist(final Short statusId, final Short customerLevelId)
             throws PersistenceException {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("CHECKLIST_STATUS", CheckListConstants.STATUS_ACTIVE);
         queryParameters.put("STATUS_ID", statusId);
         queryParameters.put("LEVEL_ID", customerLevelId);
-        List<CustomerCheckListBO> queryResult = executeNamedQuery(NamedQueryConstants.GET_CUSTOMER_STATE_CHECKLIST,
-                queryParameters);
+        List<CustomerCheckListBO> queryResult = executeNamedQuery(NamedQueryConstants.GET_CUSTOMER_STATE_CHECKLIST,queryParameters);
         return queryResult;
     }
 
@@ -782,9 +786,8 @@ public class CustomerPersistence extends Persistence {
         HashMap<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("customerId", customerId);
         queryParameters.put("accountTypeId", accountTypeId);
-        List queryResult = executeNamedQuery(NamedQueryConstants.VIEWALLCLOSEDACCOUNTS, queryParameters);
+        List queryResult = executeNamedQuery("customer.viewallclosedaccounts", queryParameters);
         return queryResult;
-
     }
 
     public Short getLoanOfficerForCustomer(final Integer customerId) throws PersistenceException {
@@ -1136,7 +1139,7 @@ public class CustomerPersistence extends Persistence {
             totalAmountDue = new Money(mifosCurrency, "7.7");
 
             loanDetails.add(new LoanDetailDto(globalAccountNum, prdOfferingName, accountStateId, accountStateName,
-                    outstandingBalance, totalAmountDue));
+                    outstandingBalance.toString(), totalAmountDue.toString()));
         }
         return loanDetails;
     }

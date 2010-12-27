@@ -27,6 +27,7 @@ import org.springframework.binding.message.MessageResolver;
 import org.springframework.binding.validation.ValidationContext;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import static java.text.MessageFormat.format;
 
@@ -39,32 +40,95 @@ public class CashFlowValidator {
             validateRevenue(messageContext, monthlyCashFlowForm);
             validateNotes(messageContext, monthlyCashFlowForm);
         }
+        validateTotalCapitalAndLiability(cashFlow, messageContext);
+        validateIndebtednessRatio(cashFlow, messageContext);
+        setTotalsOnCashFlowForm(cashFlow, messageContext);
+    }
+
+    private void setTotalsOnCashFlowForm(CashFlowForm cashFlowForm, MessageContext messageContext) {
+        if (!messageContext.hasErrorMessages()) {
+            BigDecimal totalExpenses = BigDecimal.ZERO, totalRevenues = BigDecimal.ZERO;
+            for (MonthlyCashFlowForm monthlyCashFlowForm : cashFlowForm.getMonthlyCashFlows()) {
+                totalExpenses = totalExpenses.add(monthlyCashFlowForm.getExpense());
+                totalRevenues = totalRevenues.add(monthlyCashFlowForm.getRevenue());
+            }
+            cashFlowForm.setTotalExpenses(totalExpenses);
+            cashFlowForm.setTotalRevenues(totalRevenues);
+        }
+    }
+
+    private void validateTotalCapitalAndLiability(CashFlowForm cashFlow, MessageContext messageContext) {
+        if (cashFlow.isCaptureCapitalLiabilityInfo()) {
+            validateTotalCapital(messageContext, cashFlow.getTotalCapital());
+            validateTotalLiability(messageContext, cashFlow.getTotalLiability());
+        }
+    }
+
+    private void validateIndebtednessRatio(CashFlowForm cashFlowForm, MessageContext messageContext) {
+        if (cashFlowForm.shouldForValidateIndebtednessRate()) {
+            Double indebtednessRatio = cashFlowForm.getIndebtednessRatio();
+            BigDecimal loanAmount = cashFlowForm.getLoanAmount();
+            BigDecimal totalCapital = cashFlowForm.getTotalCapital();
+            BigDecimal totalLiability = cashFlowForm.getTotalLiability();
+            Double calculatedIndebtednessRatio = totalLiability.add(loanAmount).multiply(CashFlowConstants.HUNDRED).
+                    divide(totalCapital,2,RoundingMode.HALF_EVEN).doubleValue();
+            if (calculatedIndebtednessRatio >= indebtednessRatio) {
+                String message = format("Indebtedness rate of the client is {0} which should be lesser than the allowable value of {1}",
+                        calculatedIndebtednessRatio, indebtednessRatio);
+                constructErrorMessage(CashFlowConstants.INDEBTEDNESS_RATIO_MORE_THAN_ALLOWED, message, messageContext, calculatedIndebtednessRatio, indebtednessRatio);
+            }
+        }
+    }
+
+    private void validateTotalCapital(MessageContext messageContext, BigDecimal totalCapital) {
+        if (isNull(totalCapital)) {
+            String message = format("Total Capital should not be empty");
+            constructErrorMessage(CashFlowConstants.TOTAL_CAPITAL_SHOULD_NOT_BE_EMPTY, message, messageContext);
+            return;
+        }
+
+        if ((totalCapital.doubleValue() <= 0)) {
+            String message = format("Total Capital needs to be a value greater than zero");
+            constructErrorMessage(CashFlowConstants.TOTAL_CAPITAL_SHOULD_BE_GREATER_THAN_ZERO, message, messageContext);
+        }
+    }
+
+    private void validateTotalLiability(MessageContext messageContext, BigDecimal totalLiability) {
+        if (isNull(totalLiability)) {
+            String message = format("Total Liability should not be empty");
+            constructErrorMessage(CashFlowConstants.TOTAL_LIABILITY_SHOULD_NOT_BE_EMPTY, message, messageContext);
+            return;
+        }
+        if (totalLiability.doubleValue() < 0) {
+            String message = format("Total Liability needs to be non negative");
+            constructErrorMessage(CashFlowConstants.TOTAL_LIABILITY_SHOULD_BE_NON_NEGATIVE, message, messageContext);
+        }
     }
 
     private void validateExpense(MessageContext messageContext, MonthlyCashFlowForm monthlyCashFlowForm) {
         if (isNull(monthlyCashFlowForm.getExpense())) {
-            String message = format("Please specify expense for {0} {1}.", monthlyCashFlowForm.getMonth(),
+            String message = format("Please specify expense for {0} {1}.", monthlyCashFlowForm.getMonthInLocale(),
                     Integer.toString(monthlyCashFlowForm.getYear()));
             constructErrorMessage(CashFlowConstants.EMPTY_EXPENSE, message, messageContext,
-                    monthlyCashFlowForm.getMonth(), Integer.toString(monthlyCashFlowForm.getYear()));
+                    monthlyCashFlowForm.getMonthInLocale(), Integer.toString(monthlyCashFlowForm.getYear()));
         }
     }
 
     private void validateRevenue(MessageContext messageContext, MonthlyCashFlowForm monthlyCashFlowForm) {
         if (isNull(monthlyCashFlowForm.getRevenue())) {
-            String message = format("Please specify revenue for {0} {1}.", monthlyCashFlowForm.getMonth(),
+            String message = format("Please specify revenue for {0} {1}.", monthlyCashFlowForm.getMonthInLocale(),
                     Integer.toString(monthlyCashFlowForm.getYear()));
             constructErrorMessage(CashFlowConstants.EMPTY_REVENUE, message, messageContext,
-                    monthlyCashFlowForm.getMonth(), Integer.toString(monthlyCashFlowForm.getYear()));
+                    monthlyCashFlowForm.getMonthInLocale(), Integer.toString(monthlyCashFlowForm.getYear()));
         }
     }
 
     private void validateNotes(MessageContext messageContext, MonthlyCashFlowForm monthlyCashFlowForm) {
         if (!StringUtils.isEmpty(monthlyCashFlowForm.getNotes()) && monthlyCashFlowForm.getNotes().length() > 300) {
-            String message = format("Notes should be less than 300 characters for {0} {1}.", monthlyCashFlowForm.getMonth(),
+            String message = format("Notes should be less than 300 characters for {0} {1}.", monthlyCashFlowForm.getMonthInLocale(),
                     Integer.toString(monthlyCashFlowForm.getYear()));
             constructErrorMessage(CashFlowConstants.EMPTY_NOTES, message, messageContext,
-                    monthlyCashFlowForm.getMonth(), Integer.toString(monthlyCashFlowForm.getYear()));
+                    monthlyCashFlowForm.getMonthInLocale(), Integer.toString(monthlyCashFlowForm.getYear()));
         }
     }
 

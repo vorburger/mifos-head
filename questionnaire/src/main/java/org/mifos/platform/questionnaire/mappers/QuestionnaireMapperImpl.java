@@ -20,6 +20,7 @@
 
 package org.mifos.platform.questionnaire.mappers;
 
+import java.util.HashMap;
 import org.mifos.platform.questionnaire.domain.AnswerType;
 import org.mifos.platform.questionnaire.domain.ChoiceTagEntity;
 import org.mifos.platform.questionnaire.domain.EventSourceEntity;
@@ -149,7 +150,7 @@ public class QuestionnaireMapperImpl implements QuestionnaireMapper {
         question.setQuestionText(questionDetail.getText());
         question.setAnswerType(mapToAnswerType(questionDetail.getType()));
         question.setChoices(mapToChoices(questionDetail.getAnswerChoices()));
-        question.setQuestionState(QuestionState.getQuestionStateEnum(questionDetail.isActive()));
+        question.setQuestionState(QuestionState.getQuestionStateEnum(questionDetail.isActive(), questionDetail.isEditable()));
         mapBoundsForNumericQuestionDetail(questionDetail, question);
         return question;
     }
@@ -334,7 +335,7 @@ public class QuestionnaireMapperImpl implements QuestionnaireMapper {
 
     private QuestionDetail mapToQuestionDetail(QuestionEntity question, QuestionType type) {
         List<ChoiceDto> answerChoices = mapToQuestionChoices(question.getChoices());
-        QuestionDetail questionDetail = new QuestionDetail(question.getQuestionId(), question.getQuestionText(), type, question.isActive());
+        QuestionDetail questionDetail = new QuestionDetail(question.getQuestionId(), question.getQuestionText(), type, question.isActive(), question.isEditable());
         questionDetail.setNickname(question.getNickname());
         questionDetail.setAnswerChoices(answerChoices);
         mapBoundsForNumericQuestion(question, questionDetail);
@@ -450,11 +451,21 @@ public class QuestionnaireMapperImpl implements QuestionnaireMapper {
         return questionGroupResponses;
     }
 
+    private Map<Integer, SectionQuestion> sectionQuestionMap = new HashMap<Integer, SectionQuestion>();
+
     private QuestionGroupResponse mapToQuestionGroupResponse(QuestionGroupInstance questionGroupInstance, QuestionGroupResponseDto questionGroupResponseDto) {
         QuestionGroupResponse questionGroupResponse = new QuestionGroupResponse();
         questionGroupResponse.setResponse(questionGroupResponseDto.getResponse());
         questionGroupResponse.setQuestionGroupInstance(questionGroupInstance);
-        questionGroupResponse.setSectionQuestion(sectionQuestionDao.getDetails(questionGroupResponseDto.getSectionQuestionId()));
+
+        SectionQuestion sq;
+        if (sectionQuestionMap.containsKey(questionGroupResponseDto.getSectionQuestionId())) {
+            sq = sectionQuestionMap.get(questionGroupResponseDto.getSectionQuestionId());
+        } else {
+            sq = sectionQuestionDao.getDetails(questionGroupResponseDto.getSectionQuestionId());
+            sectionQuestionMap.put(questionGroupResponseDto.getSectionQuestionId(), sq);
+        }
+        questionGroupResponse.setSectionQuestion(sq);
         return questionGroupResponse;
     }
 
@@ -499,7 +510,9 @@ public class QuestionnaireMapperImpl implements QuestionnaireMapper {
         questionEntity.setAnswerType(mapToAnswerType(questionDto.getType()));
         questionEntity.setNumericMin(questionDto.getMinValue());
         questionEntity.setNumericMax(questionDto.getMaxValue());
-        questionEntity.setQuestionState(questionDto.isActive() ? QuestionState.ACTIVE : QuestionState.INACTIVE);
+        questionEntity.setQuestionState(questionDto.isActive() ?
+                questionDto.isEditable() ? QuestionState.ACTIVE : QuestionState.ACTIVE_NOT_EDITABLE :
+                questionDto.isEditable() ? QuestionState.INACTIVE : QuestionState.INACTIVE_NOT_EDITABLE);
         questionEntity.setChoices(mapToChoices(questionDto.getChoices()));
         return questionEntity;
     }

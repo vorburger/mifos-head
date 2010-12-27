@@ -31,7 +31,6 @@ import junit.framework.Assert;
 
 import org.hibernate.Session;
 import org.hibernate.Transaction;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mifos.customers.office.business.OfficeBO;
@@ -175,6 +174,7 @@ public class BranchReportHelperIntegrationTest extends BranchReportIntegrationTe
         assertSameCollections(generatedClientSummaryReport, retrievedBranchReportClientSummaries);
     }
 
+    @Override
     @Before
     public void setUp() throws Exception {
         session = StaticHibernateUtil.getSessionTL();

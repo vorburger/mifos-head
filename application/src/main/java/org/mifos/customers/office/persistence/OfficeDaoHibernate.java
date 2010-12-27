@@ -30,17 +30,17 @@ import java.util.Map;
 import java.util.Set;
 
 import org.mifos.accounts.savings.persistence.GenericDao;
+import org.mifos.application.NamedQueryConstants;
 import org.mifos.application.master.MessageLookup;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.master.util.helpers.MasterConstants;
 import org.mifos.application.util.helpers.EntityType;
-import org.mifos.application.NamedQueryConstants;
+import org.mifos.application.questionnaire.migration.CustomFieldForMigrationDto;
 import org.mifos.config.util.helpers.ConfigurationConstants;
 import org.mifos.core.MifosRuntimeException;
 import org.mifos.customers.exceptions.CustomerException;
 import org.mifos.customers.group.util.helpers.GroupConstants;
 import org.mifos.customers.office.business.OfficeBO;
-import org.mifos.customers.office.business.OfficeCustomFieldEntity;
 import org.mifos.customers.office.business.OfficeLevelEntity;
 import org.mifos.customers.office.exceptions.OfficeException;
 import org.mifos.customers.office.util.helpers.OfficeConstants;
@@ -51,6 +51,7 @@ import org.mifos.dto.domain.OfficeDetailsDto;
 import org.mifos.dto.domain.OfficeDto;
 import org.mifos.dto.domain.OfficeHierarchyDto;
 import org.mifos.dto.domain.OfficeLevelDto;
+import org.mifos.security.authorization.HierarchyManager;
 import org.mifos.security.util.UserContext;
 import org.mifos.service.BusinessRuleException;
 
@@ -322,18 +323,20 @@ public class OfficeDaoHibernate implements OfficeDao {
         return customFieldsForCenter;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public final Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForOffice() {
+    public final List<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForOffice() {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put(MasterConstants.ENTITY_TYPE, EntityType.OFFICE.getValue());
-        return (Iterator<CustomFieldDefinitionEntity>) genericDao.executeNamedQueryIterator(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
+        return (List<CustomFieldDefinitionEntity>) genericDao.executeNamedQuery(NamedQueryConstants.RETRIEVE_CUSTOM_FIELDS, queryParameters);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Iterator<OfficeCustomFieldEntity> getCustomFieldResponses(Short customFieldId) {
+    public List<Object[]> getCustomFieldResponses(List<Short> customFieldIds) {
         Map<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put("CUSTOM_FIELD_ID", customFieldId);
-        return (Iterator<OfficeCustomFieldEntity>) genericDao.executeNamedQueryIterator("CustomerCustomFieldEntity.getResponses", queryParameters);
+        queryParameters.put("CUSTOM_FIELD_ID", customFieldIds);
+        return (List<Object[]>) genericDao.executeNamedQuery("OfficeCustomFieldEntity.getResponses", queryParameters);
     }
 
 
@@ -364,5 +367,24 @@ public class OfficeDaoHibernate implements OfficeDao {
         if (count != null && count.longValue() > 0) {
             throw new BusinessRuleException(OfficeConstants.KEYHASACTIVEOFFICEWITHLEVEL);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<OfficeDetailsDto> findActiveBranches(Short officeId) {
+
+        List<OfficeDetailsDto> matchingActiveBranches = new ArrayList<OfficeDetailsDto>();
+
+        String searchId = HierarchyManager.getInstance().getSearchId(officeId);
+        HashMap<String, Object> queryParameters = new HashMap<String, Object>();
+        queryParameters.put("levelId", OfficeConstants.BRANCHOFFICE);
+        queryParameters.put("OFFICESEARCHID", searchId);
+        queryParameters.put("OFFICE_LIKE_SEARCHID", searchId + "%.");
+        queryParameters.put("statusId", OfficeConstants.ACTIVE);
+        List<OfficeDetailsDto> queryResult = (List<OfficeDetailsDto>) this.genericDao.executeNamedQuery(NamedQueryConstants.MASTERDATA_ACTIVE_BRANCHES,queryParameters);
+        if (queryResult != null) {
+            matchingActiveBranches = new ArrayList<OfficeDetailsDto>(queryResult);
+        }
+        return matchingActiveBranches;
     }
 }

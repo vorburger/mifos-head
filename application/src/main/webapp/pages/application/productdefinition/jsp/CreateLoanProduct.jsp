@@ -516,8 +516,7 @@ explanation of the license and how it is applied.
 													bundle="ProductDefUIResources" />
 											</fmt:param>
 										</fmt:message>:</td>
-										<td width="70%" valign="top"><mifos:select
-											property="interestTypes">
+										<td width="70%" valign="top"><mifos:select property="interestTypes">
 											<c:forEach
 												items="${session:getFromSession(sessionScope.flowManager,requestScope.currentFlowKey,'InterestTypesList')}"
 												var="intType">
@@ -633,21 +632,49 @@ explanation of the license and how it is applied.
                                             <td valign="top"><html-el:checkbox styleId="createLoanProduct.checkbox.cashFlowValidation"
                                                 onclick="showCashFlowInputs();" property="cashFlowValidation" value="1" />
                                             </td>
-                                        </tr>
-                                        <tr class="fontnormal">
-                                            <td width="30%" align="right" valign="top">
-                                                <div id="cashFlowThresholdDiv"  style="display: none;">
-                                                    <mifos:mifoslabel name="product.cashFlowWarningThreshold" bundle="ProductDefUIResources" isColonRequired="yes" />
-                                                </div>
+                                    </tr>
+                                    <tr class="fontnormal">
+                                        <td width="30%" align="right" valign="top">
+                                            <div id="cashFlowThresholdDiv"  style="display: none;">
+                                                <mifos:mifoslabel name="product.cashFlowThreshold" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                            </div>
                                             </td>
-                                            <td valign="top">
-                                                <div id="cashFlowThresholdInputDiv" style="display: none;">
-                                                        <mifos:decimalinput styleId= "createLoanProduct.input.cashFlowWarningThreshold" property="cashFlowWarningThreshold" />
-                                                        <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
-                                                </div>
+                                        <td valign="top">
+                                            <div id="cashFlowThresholdInputDiv" style="display: none;">
+                                                <mifos:decimalinput styleId= "createLoanProduct.input.cashFlowThreshold" property="cashFlowThreshold" />
+                                                <c:out value="( ${sessionScope.loanproductactionform.minCashFlowThreshold} - ${sessionScope.loanproductactionform.maxCashFlowThreshold} )" />  
+                                                <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="fontnormal">
+                                        <td width="30%" align="right" valign="top">
+                                            <div id="cashFlowIndebtednessRatioDiv"  style="display: none;">
+                                                <mifos:mifoslabel name="product.indebtednessRatio" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                            </div>
                                             </td>
-                                       </tr>
-                                       
+                                        <td valign="top">
+                                            <div id="cashFlowIndebtednessRatioInputDiv" style="display: none;">
+                                                <mifos:decimalinput styleId= "createLoanProduct.input.indebtednessRatio" property="indebtednessRatio" />
+                                                <c:out value="( ${sessionScope.loanproductactionform.minIndebtednessRatio} - ${sessionScope.loanproductactionform.maxIndebtednessRatio} )" />
+                                                <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="fontnormal">
+                                        <td width="30%" align="right" valign="top">
+                                            <div id="cashFlowRepaymentCapacityDiv"  style="display: none;">
+                                                <mifos:mifoslabel name="product.repaymentCapacity" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                            </div>
+                                            </td>
+                                        <td valign="top">
+                                            <div id="cashFlowRepaymentCapacityInputDiv" style="display: none;">
+                                                <mifos:decimalinput styleId= "createLoanProduct.input.repaymentCapacity" property="repaymentCapacity" />
+                                                <c:out value="( ${sessionScope.loanproductactionform.minRepaymentCapacity} - ${sessionScope.loanproductactionform.maxRepaymentCapacity} )" />
+                                                <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
+                                            </div>
+                                        </td>
+                                    </tr>
 									<tr class="fontnormal">
 										<td width="30%" align="right" valign="top"><mifos:mifoslabel
 											mandatory="yes" name="product.freqofinst"

@@ -23,6 +23,7 @@ package org.mifos.accounts.loan.struts.actionforms;
 import static org.apache.commons.lang.StringUtils.isBlank;
 import static org.mifos.accounts.loan.util.helpers.LoanConstants.PERSPECTIVE_VALUE_REDO_LOAN;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,6 +38,7 @@ import javax.servlet.http.HttpServletRequest;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.struts.action.ActionErrors;
 import org.apache.struts.action.ActionMapping;
 import org.apache.struts.action.ActionMessage;
@@ -45,10 +47,9 @@ import org.mifos.accounts.fees.business.FeeDto;
 import org.mifos.accounts.fees.util.helpers.FeeFormula;
 import org.mifos.accounts.fees.util.helpers.RateAmountFlag;
 import org.mifos.accounts.loan.business.LoanBO;
-import org.mifos.accounts.loan.struts.uihelpers.CashflowDataHtmlBean;
 import org.mifos.accounts.loan.struts.uihelpers.LoanUIHelperFn;
 import org.mifos.accounts.loan.struts.uihelpers.PaymentDataHtmlBean;
-import org.mifos.accounts.loan.util.helpers.LoanAccountDetailsDto;
+import org.mifos.accounts.loan.util.helpers.CashFlowDataDto;
 import org.mifos.accounts.loan.util.helpers.LoanConstants;
 import org.mifos.accounts.loan.util.helpers.LoanExceptionConstants;
 import org.mifos.accounts.loan.util.helpers.RepaymentScheduleInstallment;
@@ -57,14 +58,13 @@ import org.mifos.accounts.productdefinition.business.InstallmentRange;
 import org.mifos.accounts.productdefinition.business.LoanOfferingBO;
 import org.mifos.accounts.productdefinition.util.helpers.ProductDefinitionConstants;
 import org.mifos.accounts.util.helpers.AccountState;
-import org.mifos.accounts.util.helpers.PaymentDataTemplate;
 import org.mifos.application.admin.servicefacade.InvalidDateException;
+import org.mifos.application.cashflow.struts.CashFlowCaptor;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.master.business.CustomFieldType;
 import org.mifos.application.master.business.MifosCurrency;
 import org.mifos.application.meeting.exceptions.MeetingException;
 import org.mifos.application.meeting.util.helpers.RecurrenceType;
-import org.mifos.application.questionnaire.struts.CashFlowCaptor;
 import org.mifos.application.questionnaire.struts.QuestionResponseCapturer;
 import org.mifos.application.util.helpers.EntityType;
 import org.mifos.application.util.helpers.Methods;
@@ -73,22 +73,18 @@ import org.mifos.config.business.service.ConfigurationBusinessService;
 import org.mifos.config.persistence.ConfigurationPersistence;
 import org.mifos.config.util.helpers.ConfigurationConstants;
 import org.mifos.customers.business.CustomerBO;
-import org.mifos.customers.business.service.CustomerBusinessService;
-import org.mifos.customers.util.helpers.CustomerDetailDto;
+import org.mifos.customers.persistence.CustomerPersistence;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.CustomerDetailDto;
+import org.mifos.dto.domain.LoanAccountDetailsDto;
 import org.mifos.framework.components.fieldConfiguration.business.FieldConfigurationEntity;
 import org.mifos.framework.exceptions.ApplicationException;
 import org.mifos.framework.exceptions.PageExpiredException;
+import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.exceptions.ServiceException;
 import org.mifos.framework.struts.actionforms.BaseActionForm;
 import org.mifos.framework.util.LocalizationConverter;
-import org.mifos.framework.util.helpers.Constants;
-import org.mifos.framework.util.helpers.DateUtils;
-import org.mifos.framework.util.helpers.DoubleConversionResult;
-import org.mifos.framework.util.helpers.ExceptionConstants;
-import org.mifos.framework.util.helpers.FilePaths;
-import org.mifos.framework.util.helpers.Money;
-import org.mifos.framework.util.helpers.SessionUtils;
+import org.mifos.framework.util.helpers.*;
 import org.mifos.platform.cashflow.ui.model.CashFlowForm;
 import org.mifos.platform.questionnaire.service.QuestionGroupDetail;
 import org.mifos.security.util.UserContext;
@@ -215,18 +211,18 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
 
     private CashFlowForm cashFlowForm;
 
-    private List<CashflowDataHtmlBean> cashflowDataHtmlBeans;
+    private List<CashFlowDataDto> cashflowDataDtos;
 
     private String scheduleViewDate;
 
     private Money loanAmountValue;
 
-    public List<CashflowDataHtmlBean> getCashflowDataHtmlBeans(){
-        return cashflowDataHtmlBeans;
+    public List<CashFlowDataDto> getCashflowDataDtos(){
+        return cashflowDataDtos;
     }
 
-    public void setCashflowDataHtmlBeans(List<CashflowDataHtmlBean> cashflowDataHtmlBeans) {
-        this.cashflowDataHtmlBeans = cashflowDataHtmlBeans;
+    public void setCashflowDataDtos(List<CashFlowDataDto> cashflowDataDtos) {
+        this.cashflowDataDtos = cashflowDataDtos;
     }
 
 
@@ -655,7 +651,7 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
                 }
             }
         } else if (method.equals(Methods.load.toString())) {
-            cashflowDataHtmlBeans = null;
+            cashflowDataDtos = null;
             clients = new ArrayList<String>();
         } else if (method.equals(Methods.managePreview.toString())) {
             intDedDisbursement = "0";
@@ -886,7 +882,7 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
     }
 
     private void performGlimSpecificValidations(ActionErrors errors, MifosCurrency currency, HttpServletRequest request)
-            throws PageExpiredException, ServiceException {
+            throws PageExpiredException, PersistenceException {
         if (configService.isGlimEnabled() && getCustomer(request).isGroup()) {
             Locale locale = getUserContext(request).getPreferredLocale();
             removeClientsNotCheckedInForm(request);
@@ -1201,6 +1197,12 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
         }
     }
 
+    public boolean isAmountZeroOrNull(String loanAmount) {
+        return StringUtils.isBlank(loanAmount)
+                || (Double.compare(new LocalizationConverter().getDoubleValueForCurrentLocale(loanAmount),
+                        NumberUtils.DOUBLE_ZERO) == 0);
+    }
+
     void validateSumOfTheAmountsSpecified(ActionErrors errors) {
         List<String> ids_clients_selected = getClients();
         double totalAmount = new Double(0);
@@ -1208,7 +1210,8 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
         for (LoanAccountDetailsDto loanDetail : getClientDetails()) {
             if (!foundInvalidAmount) {
                 if (ids_clients_selected.contains(loanDetail.getClientId())) {
-                    if (loanDetail.isAmountZeroOrNull()) {
+
+                    if (isAmountZeroOrNull(loanDetail.getLoanAmount())) {
                         addError(errors, LoanExceptionConstants.CUSTOMER_LOAN_AMOUNT_FIELD);
                         foundInvalidAmount = true;
                     } else {
@@ -1336,23 +1339,23 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
         Locale locale = getUserContext(request).getPreferredLocale();
         try {
             CustomerBO customer = getCustomer(request);
-            for (PaymentDataTemplate template : paymentDataBeans) {
+            for (PaymentDataHtmlBean bean : paymentDataBeans) {
                 // No data for amount and transaction date, validation not
                 // applicable
-                if (!template.hasValidAmount() || template.getTransactionDate() == null) {
+                if (!bean.hasValidAmount() || bean.getTransactionDate() == null) {
                     continue;
                 }
                 // Meeting date is invalid
-                if (!customer.getCustomerMeeting().getMeeting().isValidMeetingDate(template.getTransactionDate(),
+                if (!customer.getCustomerMeeting().getMeeting().isValidMeetingDate(bean.getTransactionDate(),
                         DateUtils.getLastDayOfNextYear())) {
                     errors.add(LoanExceptionConstants.INVALIDTRANSACTIONDATE, new ActionMessage(
                             LoanExceptionConstants.INVALIDTRANSACTIONDATE));
                     continue;
                 }
-
-                validateTotalAmount(errors, template.getTotalAmount().toString(), locale, currency);
+                validateTotalAmountForConversionErrors(errors,bean,locale,currency);
+//                validateTotalAmount(errors, bean.getTotalAmount().toString(), locale, currency);
                 // User has enter a payment for future date
-                validateTransactionDate(errors, template, getDisbursementDateValue(locale));
+                validateTransactionDate(errors, bean, getDisbursementDateValue(locale));
             }
         } catch (InvalidDateException invalidDate) {
             errors.add(LoanExceptionConstants.INVALIDTRANSACTIONDATE, new ActionMessage(
@@ -1363,10 +1366,23 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
         } catch (PageExpiredException e) {
             errors.add(ExceptionConstants.PAGEEXPIREDEXCEPTION, new ActionMessage(
                     ExceptionConstants.PAGEEXPIREDEXCEPTION));
-        } catch (ServiceException e) {
+        } catch (PersistenceException e) {
             errors.add(ExceptionConstants.FRAMEWORKRUNTIMEEXCEPTION, new ActionMessage(
                     ExceptionConstants.FRAMEWORKRUNTIMEEXCEPTION));
         }
+    }
+
+    private void validateTotalAmountForConversionErrors(ActionErrors errors,
+                            PaymentDataHtmlBean bean, Locale locale, MifosCurrency currency) {
+        LocalizationConverter localizationConverter = new LocalizationConverter(currency);
+        DoubleConversionResult conversionResult = localizationConverter.parseDoubleForInstallmentTotalAmount(bean.getAmount());
+        List<ConversionError> conversionErrors = conversionResult.getErrors();
+        if (!conversionErrors.isEmpty()) {
+            addError(errors,LoanConstants.LOAN_AMOUNT_KEY,LoanConstants.ERRORS_HAS_INVALID_FORMAT,
+                    lookupLocalizedPropertyValue(LoanConstants.LOAN_AMOUNT_KEY, locale,
+                            FilePaths.LOAN_UI_RESOURCE_PROPERTYFILE));
+        }
+
     }
 
     protected void validateTotalAmount(ActionErrors errors, String amount, Locale locale, MifosCurrency currency) {
@@ -1379,8 +1395,8 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
         }
     }
 
-    void validateTransactionDate(ActionErrors errors, PaymentDataTemplate template, java.util.Date disbursementDate) {
-        if (template.getTotalAmount() == null) {
+    void validateTransactionDate(ActionErrors errors, PaymentDataHtmlBean template, java.util.Date disbursementDate) {
+        if (template.getTotal() == null) {
             return;
         }
         try {
@@ -1397,15 +1413,15 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
         }
     }
 
-    private CustomerBO getCustomer(Integer customerId) throws ServiceException {
-        return new CustomerBusinessService().getCustomer(customerId);
+    private CustomerBO getCustomer(Integer customerId) throws PersistenceException {
+        return new CustomerPersistence().getCustomer(customerId);
     }
 
     /**
      * FIXME - keithw - loan refactoring - try to remove this usage from validation stages
      */
     @Deprecated
-    private CustomerBO getCustomer(HttpServletRequest request) throws PageExpiredException, ServiceException {
+    private CustomerBO getCustomer(HttpServletRequest request) throws PageExpiredException, PersistenceException {
         CustomerDetailDto oldCustomer = (CustomerDetailDto) SessionUtils.getAttribute(LoanConstants.LOANACCOUNTOWNER, request);
         Integer oldCustomerId;
         if (oldCustomer == null) {
@@ -1500,7 +1516,11 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
     }
 
     public Double getMinLoanAmountValue() {
-        return amountRange.getMinLoanAmount();
+        if (this.amountRange != null) {
+            return amountRange.getMinLoanAmount();
+        }
+
+        return Double.valueOf("0");
     }
 
     public String getMaxLoanAmount() {
@@ -1508,7 +1528,11 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
     }
 
     public Double getMaxLoanAmountValue() {
-        return amountRange.getMaxLoanAmount();
+        if (this.amountRange != null) {
+            return amountRange.getMaxLoanAmount();
+        }
+
+        return Double.valueOf("0");
     }
 
     public String getMinNoInstallments() {
@@ -1516,7 +1540,11 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
     }
 
     public Short getMinNoInstallmentsValue() {
-        return installmentRange.getMinNoOfInstall();
+        if (this.installmentRange != null) {
+            return installmentRange.getMinNoOfInstall();
+        }
+
+        return Short.valueOf("0");
     }
 
     public String getMaxNoInstallments() {
@@ -1524,7 +1552,11 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
     }
 
     public Short getMaxNoInstallmentsValue() {
-        return installmentRange.getMaxNoOfInstall();
+        if (this.installmentRange != null) {
+            return installmentRange.getMaxNoOfInstall();
+        }
+
+        return Short.valueOf("0");
     }
 
     public void removeClientDetailsWithNoMatchingClients() {
@@ -1536,6 +1568,10 @@ public class LoanAccountActionForm extends BaseActionForm implements QuestionRes
 
     public void initializeInstallments(List<RepaymentScheduleInstallment> installments) {
         this.installments = installments;
+    }
+
+    public BigDecimal getLoanAmountAsBigDecimal() {
+        return loanAmountValue.getAmount();
     }
 
 

@@ -65,6 +65,10 @@ public class OfficePersistence extends Persistence {
         return officeBO;
     }
 
+    /**
+     * @deprecated see {@link OfficeDao}.
+     */
+    @Deprecated
     public List<OfficeDetailsDto> getActiveOffices(Short officeId) throws PersistenceException {
         String searchId = HierarchyManager.getInstance().getSearchId(officeId);
         HashMap<String, Object> queryParameters = new HashMap<String, Object>();
@@ -75,7 +79,6 @@ public class OfficePersistence extends Persistence {
         List<OfficeDetailsDto> queryResult = executeNamedQuery(NamedQueryConstants.MASTERDATA_ACTIVE_BRANCHES,
                 queryParameters);
         return queryResult;
-
     }
 
     public List<OfficeCacheDto> getAllOffices() throws PersistenceException {
@@ -187,7 +190,7 @@ public class OfficePersistence extends Persistence {
      * see {@link OfficeDao}
      */
     @Deprecated
-    public List<OfficeDetailsDto> getActiveParents(OfficeLevel level, Short localeId) throws PersistenceException {
+    public List<OfficeDetailsDto> getActiveParents(OfficeLevel level) throws PersistenceException {
         HashMap<String, Object> queryParameters = new HashMap<String, Object>();
         queryParameters.put("LEVEL_ID", level.getValue());
         queryParameters.put("STATUS_ID", OfficeStatus.ACTIVE.getValue());
@@ -196,7 +199,7 @@ public class OfficePersistence extends Persistence {
 
     }
 
-    public List<OfficeDetailsDto> getActiveLevels(Short localeId) throws PersistenceException {
+    public List<OfficeDetailsDto> getActiveLevels() throws PersistenceException {
         HashMap<String, Object> queryParameters = new HashMap<String, Object>();
         List<OfficeDetailsDto> queryResult = executeNamedQuery(NamedQueryConstants.GETACTIVELEVELS, queryParameters);
         if (queryResult == null) {

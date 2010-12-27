@@ -22,18 +22,16 @@ package org.mifos.application.master.business.service;
 
 import java.util.List;
 
-import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.master.business.MasterDataEntity;
-import org.mifos.application.master.business.ValueListElement;
 import org.mifos.application.master.persistence.MasterPersistence;
-import org.mifos.application.util.helpers.EntityType;
-import org.mifos.accounts.api.CustomerDto;
+import org.mifos.customers.office.persistence.OfficeDao;
 import org.mifos.customers.office.persistence.OfficePersistence;
-import org.mifos.customers.persistence.CustomerDao;
 import org.mifos.customers.persistence.CustomerPersistence;
-import org.mifos.customers.personnel.business.PersonnelDto;
 import org.mifos.customers.personnel.persistence.PersonnelPersistence;
+import org.mifos.dto.domain.CustomerDto;
 import org.mifos.dto.domain.OfficeDetailsDto;
+import org.mifos.dto.domain.PersonnelDto;
+import org.mifos.dto.domain.ValueListElement;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.business.service.BusinessService;
 import org.mifos.framework.exceptions.PersistenceException;
@@ -71,6 +69,10 @@ public class MasterDataService implements BusinessService {
         return null;
     }
 
+    /**
+     * @deprecated -
+     */
+    @Deprecated
     public List<PersonnelDto> getListOfActiveLoanOfficers(Short levelId, Short officeId, Short userId,
             Short userLevelId) throws ServiceException {
         try {
@@ -80,6 +82,11 @@ public class MasterDataService implements BusinessService {
         }
     }
 
+
+    /**
+     * @deprecated see {@link OfficeDao}.
+     */
+    @Deprecated
     public List<OfficeDetailsDto> getActiveBranches(Short branchId) throws ServiceException {
         try {
             return officePersistence.getActiveOffices(branchId);
@@ -89,6 +96,7 @@ public class MasterDataService implements BusinessService {
 
     }
 
+    @Deprecated
     public List<CustomerDto> getListOfActiveParentsUnderLoanOfficer(Short personnelId, Short customerLevel,
             Short officeId) throws ServiceException {
         try {
@@ -99,22 +107,9 @@ public class MasterDataService implements BusinessService {
 
     }
 
-    /**
-     * @deprecated - use {@link CustomerDao#retrieveCustomFieldsForCenter(UserContext)}
-     */
-    @Deprecated
-    public List<CustomFieldDefinitionEntity> retrieveCustomFieldsDefinition(EntityType entityType)
-            throws ServiceException {
-        try {
-            return masterPersistence.retrieveCustomFieldsDefinition(entityType);
-        } catch (PersistenceException e) {
-            throw new ServiceException(e);
-        }
-    }
-
     public String retrieveMasterEntities(Integer entityId, Short localeId) throws ServiceException {
         try {
-            return masterPersistence.retrieveMasterEntities(entityId, localeId);
+            return masterPersistence.retrieveMasterEntities(entityId);
         } catch (PersistenceException e) {
             throw new ServiceException(e);
         }

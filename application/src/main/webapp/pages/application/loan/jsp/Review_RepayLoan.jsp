@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,9 +53,6 @@ explanation of the license and how it is applied.
 				</tr>
 			</table>
 				<table width="95%" border="0" cellpadding="0" cellspacing="0">
-								<font class="fontnormalRedBold">
-									<span id="Review_RepayLoan.error.message"><html-el:errors bundle="loanUIResources" /> 
-								</font>
 					<tr>
 						<td width="70%" height="24" align="left" valign="top"
 							class="paddingL15T15">
@@ -67,7 +64,6 @@ explanation of the license and how it is applied.
 										<c:out value="${param.globalAccountNum}" />
 											&nbsp;-&nbsp; 
 									</span> 	
-								
 									<mifos:mifoslabel name="loan.reviewtransaction"  /></td>
 							</tr>
 							<tr>
@@ -79,6 +75,10 @@ explanation of the license and how it is applied.
 									width="10" height="5"></td>
 							</tr>
 						</table>
+						<br>
+                        <font class="fontnormalRedBold no-list-style">
+							<span id="Review_RepayLoan.error.message"><html-el:errors bundle="loanUIResources" />
+						</font>
 						<br>
 						<table width="95%" border="0" cellspacing="0" cellpadding="3">
                             <c:choose>

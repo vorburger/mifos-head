@@ -21,6 +21,7 @@
 package org.mifos.platform.validations;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Errors {
@@ -32,6 +33,12 @@ public class Errors {
 
     public void addError(String fieldName, String errorCode) {
         errorEntries.add(new ErrorEntry(errorCode, fieldName));
+    }
+
+    public void addError(String errorCode, String[] args) {
+        ErrorEntry errorEntry = new ErrorEntry(errorCode, "");
+        errorEntry.setArgs(Arrays.asList(args));
+        errorEntries.add(errorEntry);
     }
 
     public boolean hasErrors() {
@@ -55,5 +62,24 @@ public class Errors {
 
     public void addErrors(List<ErrorEntry> errorEntries) {
         this.errorEntries.addAll(errorEntries);
+    }
+
+    public void addErrors(Errors otherErrors) {
+        for (ErrorEntry errorEntry : otherErrors.getErrorEntries()) {
+            this.errorEntries.add(errorEntry);
+        }
+    }
+
+    public boolean hasErrorEntryWithCode(String errorCode) {
+        boolean result = false;
+        if (hasErrors()) {
+            for (ErrorEntry errorEntry : errorEntries) {
+                if (errorCode.equals(errorEntry.getErrorCode())) {
+                    result = true;
+                    break;
+                }
+            }
+        }
+        return result;
     }
 }

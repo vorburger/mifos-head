@@ -40,8 +40,9 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         super(selenium);
     }
 
-    public void verifyPage() {
+    public ViewInstallmentDetailsPage verifyPage() {
         this.verifyPage("NextPaymentLoanAccount");
+        return this;
     }
 
 
@@ -114,7 +115,8 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
             setInstallmentDate(String.valueOf(iterator), dateTimeFormatter.print(currentInstallmentDate));
             setInstallmentDate(String.valueOf(iterator+1), dateTimeFormatter.print(currentInstallmentDate));
             clickValidateAndWaitForPageToLoad();
-            Assert.assertTrue(selenium.isTextPresent("Installments [" + (iterator+1) +", " + (iterator+2) +"] have the same due date"));
+            String s = "Installments [" + (iterator + 1) + ", " + (iterator + 2) + "] have the same due date";
+            isTextPresentInPage(s);
         }
 
         DateTime validDate = getValidDate(disbursalDate, minGap, true);
@@ -125,8 +127,13 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
             stringBuffer = stringBuffer.append(", ").append(iterator+1);
         }
         clickValidateAndWaitForPageToLoad();
-        Assert.assertTrue(selenium.isTextPresent("Installments [" + stringBuffer.toString() .trim() +"] have the same due date"));
+        isTextPresentInPage("Installments [" + stringBuffer.toString() .trim() +"] have the same due date");
+    }
 
+    private void isTextPresentInPage(String validationMessage) {
+        Assert.assertTrue(selenium.isTextPresent(validationMessage),validationMessage + " is missing");
+        Assert.assertTrue(!selenium.isElementPresent("//span[@id='schedulePreview.error.message']/li[text()='']"),"Blank Error message is thrown");
+        Assert.assertTrue(!selenium.isElementPresent("//span[@id='schedulePreview.error.message']/li[text()=' ']"),"Blank Error message is thrown");
     }
 
     private void validateErrorForInstallmentGapsGraterThanMaxGap(int maxGap, int noOfInstallments, DateTime disbursalDate) {
@@ -137,7 +144,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         }
         clickValidateAndWaitForPageToLoad();
         for (int installment = 1; installment < noOfInstallments-1; installment++) {
-            Assert.assertTrue(selenium.isTextPresent("Gap between the due dates of installment "+(installment+1)+" and the previous installment is more than allowed"));
+            isTextPresentInPage("Gap between the due dates of installment "+(installment+1)+" and the previous installment is more than allowed");
         }
     }
 
@@ -150,7 +157,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
             setInstallmentDate(String.valueOf(iterator), dateTimeFormatter.print(nextInstallmentDate));
             setInstallmentDate(String.valueOf(iterator+1), dateTimeFormatter.print(currentInstallmentDate));
             clickValidateAndWaitForPageToLoad();
-            Assert.assertTrue(selenium.isTextPresent("Installment " + (iterator+2) + " has an invalid due date. Installment due dates should be in ascending order"));
+            isTextPresentInPage("Installment " + (iterator+2) + " has an invalid due date. Installment due dates should be in ascending order");
         }
     }
 
@@ -162,13 +169,22 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         }
     }
 
+    private void verifyAllDatesFields(DateTime disbursalDate, int gap, int noOfInstallments, boolean IsGapMinimumGap) {
+        DateTime nextInstallment = disbursalDate;
+        for (int installment = 0; installment < noOfInstallments; installment++) {
+            nextInstallment = getValidDate(nextInstallment,gap, IsGapMinimumGap);
+            Assert.assertEquals(dateTimeFormatter.print(nextInstallment),selenium.getValue("installments["+installment+"].dueDate"));
+        }
+    }
+
+
     private void validateBlankDate(double noOfInstallment) {
         for (int installment = 0; installment < noOfInstallment ; installment++) {
             setInstallmentDate(String.valueOf(installment), "");
         }
         clickValidateAndWaitForPageToLoad();
         for (int installment = 0; installment < noOfInstallment ; installment++) {
-            Assert.assertTrue(selenium.isTextPresent("Installment " + (installment+1) +" has an invalid due date. An example due date is 23-Apr-2010"));
+            isTextPresentInPage("Installment " + (installment+1) +" has an invalid due date. An example due date is 23-Apr-2010");
         }
     }
 
@@ -192,7 +208,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
             }
         clickValidateAndWaitForPageToLoad();
         for (int installment = 1; installment < noOfInstallments-1; installment++) {
-            Assert.assertTrue(selenium.isTextPresent("Gap between the due dates of installment "+ (installment+1)+" and the previous installment is less than allowed"));
+            isTextPresentInPage("Gap between the due dates of installment "+ (installment+1)+" and the previous installment is less than allowed");
         }
 //        Assert.assertTrue(selenium.isTextPresent("Gap between disbursal date and due date of first installment is less than the allowable minimum gap"));
     }
@@ -212,11 +228,11 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
     private void validateGapForFirstDateAndDisbursalDate(DateTime disbursalDate) {
         setInstallmentDate("0", dateTimeFormatter.print(disbursalDate));
         clickValidateAndWaitForPageToLoad();
-        Assert.assertTrue(selenium.isTextPresent("Installment 1 has due date which falls on the disbursal date"));
+        isTextPresentInPage("Installment 1 has due date which falls on the disbursal date");
 
         setInstallmentDate("0", dateTimeFormatter.print(disbursalDate.minusDays(1)));
         clickValidateAndWaitForPageToLoad();
-        Assert.assertTrue(selenium.isTextPresent("Installment 1 has due date which falls before the disbursal date"));
+        isTextPresentInPage("Installment 1 has due date which falls before the disbursal date");
     }
 
     private void clickValidateAndWaitForPageToLoad() {
@@ -235,7 +251,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         fillAllTotalFields(noOfInstallments, "abcd123");
         clickValidateAndWaitForPageToLoad();
         for (int installment = 0; installment < noOfInstallments-1; installment++) {
-            Assert.assertTrue(selenium.isTextPresent("Installment "+(installment+1)+" has invalid total amount"));
+            isTextPresentInPage("Installment "+(installment+1)+" has invalid total amount");
         }
     }
 
@@ -244,7 +260,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         fillAllTotalFields(noOfInstallments, String.valueOf(minInstalmentAmount-1));
         clickValidateAndWaitForPageToLoad();
         for (int installment = 0; installment < noOfInstallments-1; installment++) {
-            Assert.assertTrue(selenium.isTextPresent("Installment "+(installment+1)+" has total amount less than the allowed value"));
+            isTextPresentInPage("Installment "+(installment+1)+" has total amount less than the allowed value");
         }
     }
 
@@ -252,7 +268,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         fillAllTotalFields(noOfInstallments, "");
         clickValidateAndWaitForPageToLoad();
         for (int installment = 0; installment < noOfInstallments-1; installment++) {
-            Assert.assertTrue(selenium.isTextPresent("Installment "+(installment+1)+" has invalid total amount"));
+            isTextPresentInPage("Installment "+(installment+1)+" has invalid total amount");
         }
 
     }
@@ -277,7 +293,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         Assert.assertTrue(!selenium.isElementPresent("//span[@id='schedulePreview.error.message']/li"));
     }
 
-    public void verifyCashFlow(int cashFlowIncremental) {
+    public ViewInstallmentDetailsPage verifyCashFlow(int cashFlowIncremental) {
         int noOfMonths = selenium.getXpathCount(tableXpath + "//tr").intValue() - 1;
         int  cashFlow = cashFlowIncremental;
         for (int rowIndex = 1; rowIndex <= noOfMonths ; rowIndex++) {
@@ -285,7 +301,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
             Assert.assertEquals(selenium.getText(tableXpath + "//tr[" + (rowIndex+1) + "]/td[5]"), "notes" + rowIndex);
             cashFlow = cashFlow + cashFlowIncremental;
         }
-
+        return this;
     }
 
     public void verifyCashFlowCalcualted(int cashFlowIncremental) {
@@ -299,7 +315,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         verifyCellValueOfCashFlow(3,3,"-670.00");
         verifyCellValueOfCashFlow(3,4,"-332.68");
         verifyCellValueOfCashFlow(3,5,"4.00");
-        verifyCellValueOfCashFlow(4,1,"Total installment amount for a month as % of cash flow");
+//        verifyCellValueOfCashFlow(4,1,"Total installment amount for a month as % of cash flow");
         verifyCellValueOfCashFlow(4,2,"0.00");
         verifyCellValueOfCashFlow(4,3,"33600.00");
         verifyCellValueOfCashFlow(4,4,"11189.33");
@@ -314,18 +330,18 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
     public ViewInstallmentDetailsPage verifyRecalculationOfCashFlow() {
         verifyRecalculation(validateButton);
         verifyRecalculationForForSameMonth(validateButton);
-//        verifyRecalculation(previewButton);
-//        verifyRecalculationForForSameMonth(previewButton);
+        verifyRecalculation(previewButton);
+        verifyRecalculationForForSameMonth(previewButton);
         return this;
     }
 
     public ViewInstallmentDetailsPage verifyWarningThresholdMessageOnReviewSchedulePage(double warningThreshold) {
-//        verifyWarningThresholdMessageOnReviewSchedulePage(validateButton,warningThreshold);
+        verifyWarningThresholdMessageOnReviewSchedulePage(validateButton,warningThreshold);
         verifyWarningThresholdMessageOnReviewSchedulePage(previewButton, warningThreshold);
         return this;
     }
 
-    public void verifyErrorMessageOnInstallmentDatesOutOfCashFlowCaptured() {
+    public void verifyInstallmentDatesOutOfCashFlowCaptured() {
         verifyErrorMessageOnDatesOutOfCashFlow(validateButton);
         verifyErrorMessageOnDatesOutOfCashFlow(previewButton);
     }
@@ -333,6 +349,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
     private void verifyRecalculation(String button) {
         setInstallmentDate("0", "02-Sep-2010");
         setInstallmentDate("1", "02-Oct-2010");
+        setInstallmentDate("2", "02-Nov-2010");
         setFirstAndSecondInstallmentTotal("1");
         selenium.click(button);
         selenium.waitForPageToLoad("3000");
@@ -345,6 +362,7 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
     private void verifyRecalculationForForSameMonth(String button) {
         setInstallmentDate("0", "02-Sep-2010");
         setInstallmentDate("1", "02-Sep-2010");
+        setInstallmentDate("2", "02-Nov-2010");
         setFirstAndSecondInstallmentTotal("1");
         selenium.click(button);
         selenium.waitForPageToLoad("3000");
@@ -371,16 +389,19 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         selenium.click(button);
         selenium.waitForPageToLoad("3000");
 //        Assert.assertTrue(selenium.isTextPresent("Installment amount for September 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%"));
-        Assert.assertTrue(selenium.isTextPresent("Installment amount for October 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%"));
-        Assert.assertTrue(selenium.isTextPresent("Installment amount for November 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%"));
+        isTextPresentInPage("Installment amount for October 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%");
+        isTextPresentInPage("Installment amount for November 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%");
     }
 
     private void verifyErrorMessageOnDatesOutOfCashFlow(String button) {
-        setInstallmentDate("1","02-Aug-2010");
-        setInstallmentDate("2","02-Jan-2010");
+        setInstallmentDate("0","02-Aug-2010");
+        setInstallmentDate("1","26-Oct-2010");
+        setInstallmentDate("2","02-Jan-2011");
+        setFirstAndSecondInstallmentTotal("336.0");
         selenium.click(button);
         selenium.waitForPageToLoad("3000");
-        Assert.assertTrue(selenium.isTextPresent(""));
+        isTextPresentInPage("Cash flow is not available for August 2010. Due date should be entered for a month for which cash flow is available");
+        isTextPresentInPage("Cash flow is not available for January 2011. Due date should be entered for a month for which cash flow is available");
     }
 
     public void verifyRecalculationWhenDateAndTotalChange() {
@@ -417,9 +438,9 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         verifyCellValueOfInstallments(1,4,"3.8");
         verifyCellValueOfInstallments(2,4,"2.6");
         verifyCellValueOfInstallments(3,4,"1.3");
-        verifyCellValueOfInstallments(1,5,"336.0");
-        verifyCellValueOfInstallments(2,5,"336.0");
-        verifyCellValueOfInstallments(3,5,"335.7");
+        verifyCellValueOfInstallments(1,6,"336.0");
+        verifyCellValueOfInstallments(2,6,"336.0");
+        verifyCellValueOfInstallments(3,6,"335.7");
         return this;
         //To change body of created methods use File | Settings | File Templates.
     }
@@ -428,5 +449,74 @@ public class ViewInstallmentDetailsPage extends AbstractPage {
         selenium.click(previewButton);
         selenium.waitForPageToLoad("3000");
         return new CreateLoanAccountPreviewPage(selenium);
+    }
+
+    public void verifySchedulePersistOnEdit(int noOfInstallments, int minGap, int minInstalmentAmount, DateTime disbursalDate, int maxGap) {
+        verifyAllTotalFields(noOfInstallments,String.valueOf(minInstalmentAmount));
+        verifyAllDatesFields(disbursalDate,maxGap,noOfInstallments, false);
+        verifyCellValueOfInstallments(1,3,"94.5");
+        verifyCellValueOfInstallments(2,3,"95.0");
+        verifyCellValueOfInstallments(3,3,"95.6");
+        verifyCellValueOfInstallments(4,3,"96.5");
+        verifyCellValueOfInstallments(5,3,"618.4");
+        verifyCellValueOfInstallments(1,4,"5.5");
+        verifyCellValueOfInstallments(2,4,"5.0");
+        verifyCellValueOfInstallments(3,4,"4.4");
+        verifyCellValueOfInstallments(4,4,"3.5");
+        verifyCellValueOfInstallments(5,4,"3.4");
+    }
+
+    private void verifyAllTotalFields(int noOfInstallments, String installmentAmount) {
+        for (int installment = 0; installment < noOfInstallments-1; installment++) {
+            Assert.assertEquals(selenium.getValue("installments["+installment+"].total"), installmentAmount);
+        }
+    }
+
+    public ViewInstallmentDetailsPage verifyRecalculationOfCashFlowOnValidate() {
+        verifyRecalculation(validateButton);
+        verifyRecalculationForForSameMonth(validateButton);
+        return this;
+    }
+
+    public ViewInstallmentDetailsPage verifyWarningThresholdMessageOnValidate(double warningThreshold) {
+        verifyWarningThresholdMessageOnReviewSchedulePage(validateButton,warningThreshold);
+        return this;
+    }
+
+    public ViewInstallmentDetailsPage verifyRecalculationOfCashFlowOnPreview() {
+        verifyRecalculation(previewButton);
+        verifyRecalculationForForSameMonth(previewButton);
+        return this;
+
+    }
+
+    public ViewInstallmentDetailsPage verifyWarningThresholdMessageOnPreview(double warningThreshold) {
+        verifyWarningThresholdMessageOnReviewSchedulePage(previewButton,warningThreshold);
+        this.verifyPage("CreateLoanPreview");
+        return this;
+    }
+
+    public ViewInstallmentDetailsPage verifyInstallmentDatesOutOfCashFlowCapturedOnValidate() {
+        verifyErrorMessageOnDatesOutOfCashFlow(validateButton);
+        return this;
+    }
+
+    public ViewInstallmentDetailsPage verifyInstallmentDatesOutOfCashFlowCapturedOnPreview() {
+        verifyErrorMessageOnDatesOutOfCashFlow(previewButton);
+        return this;
+    }
+
+    public ViewInstallmentDetailsPage verifyRepaymentCapacityOnPreview(String expectedRc, String minRc) {
+        clickPreviewAndGoToReviewLoanAccountPage();
+        verifyPage("SchedulePreview");
+        isTextPresentInPage("Repayment Capacity of the client is " + expectedRc + " % which should be greater than the required value of " + minRc + " %");
+        return this;
+    }
+
+    public ViewInstallmentDetailsPage verifyRepaymentCapacityOnValidate(String expectedRc, String minRc) {
+        clickValidateAndWaitForPageToLoad();
+        verifyPage("SchedulePreview");
+        isTextPresentInPage("Repayment Capacity of the client is " + expectedRc + " % which should be greater than the required value of " + minRc + " %");
+        return this;
     }
 }

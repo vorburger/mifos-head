@@ -50,7 +50,10 @@ import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -91,7 +94,7 @@ public class TestUtils {
     }
 
     public static UserContext makeUser(int role, Locale locale) {
-        UserContext user = new UserContext();
+        UserContext user = new UserContext(Locale.getDefault(), Short.valueOf("1"));
         user.setId(PersonnelConstants.SYSTEM_USER);
         user.setLocaleId(TestObjectFactory.TEST_LOCALE);
         Set<Short> set = new HashSet<Short>();
@@ -334,7 +337,9 @@ public class TestUtils {
             public void doWith(Field field) throws IllegalArgumentException, IllegalAccessException {
                 field.setAccessible(true);
                 try {
-                    if (Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()) return;
+                    if (Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()) {
+                        return;
+                    }
                     if (field.get(testCase) instanceof Object) {
                         field.set(testCase, null);
                     }
@@ -353,5 +358,9 @@ public class TestUtils {
 
     public static Date getDate(int date, int month, int year) {
         return new DateMidnight(year,month,date).toDate();
+    }
+
+    public static java.sql.Date getSqlDate(int date, int month, int year) {
+        return new java.sql.Date(getDate(date, month, year).getTime());
     }
 }

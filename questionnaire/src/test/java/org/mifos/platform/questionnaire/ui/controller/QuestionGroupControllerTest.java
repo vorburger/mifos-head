@@ -61,7 +61,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
-
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -278,15 +277,19 @@ public class QuestionGroupControllerTest {
     //TODO Question Groups added to testing data should have different titles, otherwise QuestionGroupSectionMatcher will throw exceptions. Matchers shouldn't throw exception when matching fail but return 'false'
     @Test
     public void shouldGetAllQuestionGroups() {
-        List<QuestionGroupDetail> questionGroupDetails = asList(
-                getQuestionGroupDetail(1, TITLE + "1","View","Loan", true, true, "title1", "sectionName1"), getQuestionGroupDetail(2, TITLE +"2","View","Loan", true, true, "title2", "sectionName2"), getQuestionGroupDetail(3, TITLE + "3","Create","Loan", true, true, "title3", "sectionName3"));
+        QuestionGroupDetail questionGroupDetail1 = getQuestionGroupDetail(1, TITLE + "1", "View", "Loan", true, true, "title1", "sectionName1");
+        QuestionGroupDetail questionGroupDetail2 = getQuestionGroupDetail(2, TITLE + "2", "View", "Loan", true, true, "title2", "sectionName2");
+        QuestionGroupDetail questionGroupDetail3 = getQuestionGroupDetail(3, TITLE + "3", "Create", "Loan", true, true, "title3", "sectionName3");
+        List<QuestionGroupDetail> questionGroupDetails = asList(questionGroupDetail1, questionGroupDetail2, questionGroupDetail3);
         Map <String,List <QuestionGroupDetail>> questionGroupsCategoriesSplit = new HashMap<String, List<QuestionGroupDetail>>();
-        questionGroupsCategoriesSplit.put("View Loan", asList(getQuestionGroupDetail(1, TITLE + "1","View","Loan", true, true, "title1", "sectionName1"), getQuestionGroupDetail(2, TITLE + "2","View","Loan", true, true, "title2", "sectionName2")));
-        questionGroupsCategoriesSplit.put("Create Loan", asList(getQuestionGroupDetail(3, TITLE + "3","Create","Loan", true, true, "title3", "sectionName3")));
+        questionGroupsCategoriesSplit.put("View Loan", asList(questionGroupDetail1, questionGroupDetail2));
+        questionGroupsCategoriesSplit.put("Create Loan", asList(questionGroupDetail3));
         when(questionnaireServiceFacade.getAllQuestionGroups()).thenReturn(questionGroupDetails);
+        when(questionnaireServiceFacade.getAllEventSources()).thenReturn(asList(questionGroupDetail2.getEventSources().get(0), questionGroupDetail3.getEventSources().get(0)));
         String view = questionGroupController.getAllQuestionGroups(model, httpServletRequest);
         assertThat(view, Is.is("viewQuestionGroups"));
         verify(questionnaireServiceFacade).getAllQuestionGroups();
+        verify(questionnaireServiceFacade).getAllEventSources();
         verify(model).addAttribute(Matchers.eq("questionGroups"), argThat(new QuestionGroupsGroupByEventSourceMatcher(questionGroupsCategoriesSplit)));
     }
 
@@ -596,11 +599,11 @@ public class QuestionGroupControllerTest {
     }
 
     private SectionQuestionDetail getSectionQuestionDetail(int id, String title) {
-        return new SectionQuestionDetail(new QuestionDetail(id, title, QuestionType.FREETEXT, true), true);
+        return new SectionQuestionDetail(new QuestionDetail(id, title, QuestionType.FREETEXT, true, true), true);
     }
 
     private QuestionDetail getQuestionDetail(int id, String title, QuestionType type) {
-        return new QuestionDetail(id, title, type, true);
+        return new QuestionDetail(id, title, type, true, true);
     }
 
 

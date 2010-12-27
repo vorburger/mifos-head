@@ -41,7 +41,6 @@ import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.mifos.accounts.exceptions.AccountException;
 import org.mifos.accounts.fees.business.FeeBO;
-import org.mifos.accounts.fees.persistence.FeePersistence;
 import org.mifos.accounts.fees.util.helpers.FeeFrequencyType;
 import org.mifos.accounts.fees.util.helpers.FeeStatus;
 import org.mifos.accounts.financial.business.FinancialTransactionBO;
@@ -70,15 +69,13 @@ import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.application.servicefacade.DependencyInjectedServiceLocator;
 import org.mifos.config.AccountingRules;
 import org.mifos.config.FiscalCalendarRules;
-import org.mifos.config.persistence.ConfigurationPersistence;
 import org.mifos.customers.business.CustomerAccountBO;
 import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.business.CustomerMeetingEntity;
 import org.mifos.customers.office.business.OfficeBO;
-import org.mifos.customers.persistence.CustomerPersistence;
 import org.mifos.customers.personnel.business.PersonnelBO;
-import org.mifos.customers.personnel.persistence.PersonnelPersistence;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.screen.TransactionHistoryDto;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.util.DateTimeService;
@@ -118,25 +115,10 @@ public class AccountBO extends AbstractBusinessObject {
     private final Set<AccountFeesEntity> accountFees;
     private final Set<AccountActionDateEntity> accountActionDates;
     private List<AccountPaymentEntity> accountPayments;
-    private final Set<AccountCustomFieldEntity> accountCustomFields;
+    private Set<AccountCustomFieldEntity> accountCustomFields;
 
-    /*
-     * Injected Persistence classes
-     *
-     * DO NOT ACCESS THESE MEMBERS DIRECTLY! ALWAYS USE THE GETTER!
-     *
-     * The Persistence classes below are used by this class and can be injected via a setter for testing purposes. In
-     * order for this mechanism to work correctly, the getter must be used to access them because the getter will
-     * initialize the Persistence class if it has not been injected.
-     *
-     * Long term these references to Persistence classes should probably be eliminated.
-     */
     private AccountPersistence accountPersistence = null;
-    private ConfigurationPersistence configurationPersistence = null;
-    private CustomerPersistence customerPersistence = null;
-    private FeePersistence feePersistence = null;
     private MasterPersistence masterPersistence = null;
-    protected PersonnelPersistence personnelPersistence = null;
     private DateTimeService dateTimeService = null;
     private FinancialBusinessService financialBusinessService = null;
 
@@ -173,39 +155,6 @@ public class AccountBO extends AbstractBusinessObject {
         this.accountPersistence = accountPersistence;
     }
 
-    public ConfigurationPersistence getConfigurationPersistence() {
-        if (null == configurationPersistence) {
-            configurationPersistence = new ConfigurationPersistence();
-        }
-        return configurationPersistence;
-    }
-
-    public void setConfigurationPersistence(final ConfigurationPersistence configurationPersistence) {
-        this.configurationPersistence = configurationPersistence;
-    }
-
-    public CustomerPersistence getCustomerPersistence() {
-        if (null == customerPersistence) {
-            customerPersistence = new CustomerPersistence();
-        }
-        return customerPersistence;
-    }
-
-    public void setCustomerPersistence(final CustomerPersistence customerPersistence) {
-        this.customerPersistence = customerPersistence;
-    }
-
-    public FeePersistence getFeePersistence() {
-        if (null == feePersistence) {
-            feePersistence = new FeePersistence();
-        }
-        return feePersistence;
-    }
-
-    public void setFeePersistence(final FeePersistence feePersistence) {
-        this.feePersistence = feePersistence;
-    }
-
     public MasterPersistence getMasterPersistence() {
         if (null == masterPersistence) {
             masterPersistence = new MasterPersistence();
@@ -215,17 +164,6 @@ public class AccountBO extends AbstractBusinessObject {
 
     public void setMasterPersistence(final MasterPersistence masterPersistence) {
         this.masterPersistence = masterPersistence;
-    }
-
-    public PersonnelPersistence getPersonnelPersistence() {
-        if (null == personnelPersistence) {
-            personnelPersistence = new PersonnelPersistence();
-        }
-        return personnelPersistence;
-    }
-
-    public void setPersonnelPersistence(final PersonnelPersistence personnelPersistence) {
-        this.personnelPersistence = personnelPersistence;
     }
 
     /**
@@ -276,7 +214,7 @@ public class AccountBO extends AbstractBusinessObject {
             scheduledPayment.setAccount(this);
         }
 
-        this.accountActionDates = new LinkedHashSet<AccountActionDateEntity>();
+        this.accountActionDates = new LinkedHashSet<AccountActionDateEntity>(savingsAccountActivationDetail.getScheduledPayments());
         if (customer != null) {
             this.office = customer.getOffice();
             this.personnel = customer.getPersonnel();
@@ -370,6 +308,10 @@ public class AccountBO extends AbstractBusinessObject {
 
     public List<AccountStatusChangeHistoryEntity> getAccountStatusChangeHistory() {
         return accountStatusChangeHistory;
+    }
+
+    public AccountStatusChangeHistoryEntity getLastAccountStatusChange() {
+        return accountStatusChangeHistory.get(accountStatusChangeHistory.size() - 1);
     }
 
     /**
@@ -517,54 +459,16 @@ public class AccountBO extends AbstractBusinessObject {
         AccountPaymentEntity accountPayment = makePayment(paymentData);
         addAccountPayment(accountPayment);
         buildFinancialEntries(accountPayment.getAccountTrxns());
-        // TODO adjust inst. schedule for PAWDEP
     }
 
-    /*
-     * Take raw PaymentData (usually from a web page) and enter it into Mifos.
-     */
-    /**
-     * {@link AccountPaymentEntity} and not {@link PaymentData} dto
-     */
-    public final void applyPayment(final PaymentData paymentData, final boolean persistChanges) throws AccountException {
-        applyPayment(paymentData);
-        if (persistChanges) {
-            try {
-                getAccountPersistence().createOrUpdate(this);
-            } catch (PersistenceException e) {
-                throw new AccountException(e);
-            }
-        }
-    }
 
-    /**
-     * {@link AccountPaymentEntity} and not {@link PaymentData} dto
-     */
-    public final void applyPaymentWithPersist(final PaymentData paymentData) throws AccountException {
-        applyPayment(paymentData, true);
-    }
-
-    public PaymentData createPaymentData(final UserContext userContext, final Money amount, final Date trxnDate,
-            final String receiptId, final Date receiptDate, final Short paymentTypeId) {
-        return createPaymentData(userContext.getId(), amount, trxnDate, receiptId, receiptDate, paymentTypeId);
-    }
-
-    public PaymentData createPaymentData(final Short personnelId, final Money amount, final Date trxnDate,
-            final String receiptId, final Date receiptDate, final Short paymentTypeId) {
-        PersonnelBO personnel;
-        try {
-            personnel = getPersonnelPersistence().getPersonnel(personnelId);
-        } catch (PersistenceException e) {
-            // Generally this is the UserContext id, which shouldn't ever
-            // be invalid
-            throw new IllegalStateException(AccountConstants.ERROR_INVALID_PERSONNEL);
-        }
-        if (personnel == null) {
-            // see above catch clause
+    public PaymentData createPaymentData(final Money amount, final Date trxnDate,
+            final String receiptId, final Date receiptDate, final Short paymentTypeId, PersonnelBO loggedInUser) {
+        if (loggedInUser == null) {
             throw new IllegalStateException(AccountConstants.ERROR_INVALID_PERSONNEL);
         }
 
-        PaymentData paymentData = PaymentData.createPaymentData(amount, personnel, paymentTypeId, trxnDate);
+        PaymentData paymentData = PaymentData.createPaymentData(amount, loggedInUser, paymentTypeId, trxnDate);
         if (receiptDate != null) {
             paymentData.setReceiptDate(receiptDate);
         }
@@ -580,32 +484,19 @@ public class AccountBO extends AbstractBusinessObject {
         return paymentData;
     }
 
-    public final void adjustPmnt(final String adjustmentComment) throws AccountException {
+    public final void adjustPmnt(final String adjustmentComment, PersonnelBO loggedInUser) throws AccountException {
         if (isAdjustPossibleOnLastTrxn()) {
-            logger.debug(
-                    "Adjustment is possible hence attempting to adjust.");
-            adjustPayment(findMostRecentPaymentByPaymentDate(), getLoggedInUser(), adjustmentComment);
-            try {
-                getAccountPersistence().createOrUpdate(this);
-            } catch (PersistenceException e) {
-                throw new AccountException(AccountExceptionConstants.CANNOTADJUST, e);
-            }
+            logger.debug("Adjustment is possible hence attempting to adjust.");
+            adjustPayment(findMostRecentNonzeroPaymentByPaymentDate(), loggedInUser, adjustmentComment);
         } else {
             throw new AccountException(AccountExceptionConstants.CANNOTADJUST);
         }
     }
 
-    public final void adjustLastPayment(final String adjustmentComment) throws AccountException {
+    public final void adjustLastPayment(final String adjustmentComment, PersonnelBO loggedInUser) throws AccountException {
         if (isAdjustPossibleOnLastTrxn()) {
-            logger.debug(
-                    "Adjustment is possible hence attempting to adjust.");
-
-            adjustPayment(getLastPmntToBeAdjusted(), getLoggedInUser(), adjustmentComment);
-            try {
-                getAccountPersistence().createOrUpdate(this);
-            } catch (PersistenceException e) {
-                throw new AccountException(AccountExceptionConstants.CANNOTADJUST, e);
-            }
+            logger.debug("Adjustment is possible hence attempting to adjust.");
+            adjustPayment(getLastPmntToBeAdjusted(), loggedInUser, adjustmentComment);
         } else {
             throw new AccountException(AccountExceptionConstants.CANNOTADJUST);
         }
@@ -615,7 +506,7 @@ public class AccountBO extends AbstractBusinessObject {
     protected final void adjustPayment(final AccountPaymentEntity accountPayment, final PersonnelBO personnel,
             final String adjustmentComment) throws AccountException {
         List<AccountTrxnEntity> reversedTrxns = accountPayment.reversalAdjustment(personnel, adjustmentComment);
-        updateInstallmentAfterAdjustment(reversedTrxns);
+        updateInstallmentAfterAdjustment(reversedTrxns, personnel);
         buildFinancialEntries(new LinkedHashSet<AccountTrxnEntity>(reversedTrxns));
     }
 
@@ -670,22 +561,21 @@ public class AccountBO extends AbstractBusinessObject {
         return installment;
     }
 
-    public void changeStatus(final AccountState newStatus, final Short flagId, final String comment)
-            throws AccountException {
-        changeStatus(newStatus.getValue(), flagId, comment);
+    public void changeStatus(final AccountState newStatus, final Short flagId, final String comment, PersonnelBO loggedInUser) throws AccountException {
+        changeStatus(newStatus.getValue(), flagId, comment, loggedInUser);
     }
 
-    public final void changeStatus(final Short newStatusId, final Short flagId, final String comment)
+    public final void changeStatus(final Short newStatusId, final Short flagId, final String comment, PersonnelBO loggedInUser)
             throws AccountException {
 
         Short oldStatusId = this.getState().getValue();
         if (getUserContext() == null) {
-            setThisUserContext();
+            throw new IllegalStateException("userContext is not set for account.");
         }
 
         try {
-            logger.debug(
-                    "In the change status method of AccountBO:: new StatusId= " + newStatusId);
+            logger.debug("In the change status method of AccountBO:: new StatusId= " + newStatusId);
+
             activationDateHelper(newStatusId);
             MasterPersistence masterPersistence = getMasterPersistence();
             AccountStateEntity accountStateEntity = (AccountStateEntity) masterPersistence.getPersistentObject(
@@ -696,11 +586,11 @@ public class AccountBO extends AbstractBusinessObject {
                 accountStateFlagEntity = (AccountStateFlagEntity) masterPersistence.getPersistentObject(
                         AccountStateFlagEntity.class, flagId);
             }
-            PersonnelBO personnel = getPersonnelPersistence().getPersonnel(getUserContext().getId());
+
             AccountStatusChangeHistoryEntity historyEntity = new AccountStatusChangeHistoryEntity(this
-                    .getAccountState(), accountStateEntity, personnel, this);
+                    .getAccountState(), accountStateEntity, loggedInUser, this);
             AccountNotesEntity accountNotesEntity = new AccountNotesEntity(new DateTimeService()
-                    .getCurrentJavaSqlDate(), comment, personnel, this);
+                    .getCurrentJavaSqlDate(), comment, loggedInUser, this);
             this.addAccountStatusChangeHistory(historyEntity);
             this.setAccountState(accountStateEntity);
             this.addAccountNotes(accountNotesEntity);
@@ -731,36 +621,10 @@ public class AccountBO extends AbstractBusinessObject {
                 ((SavingsBO) this).resetRecommendedAmountOnFutureInstallments();
             }
 
-            logger.debug(
-                    "Coming out successfully from the change status method of AccountBO");
+            logger.debug("Coming out successfully from the change status method of AccountBO");
         } catch (PersistenceException e) {
             throw new AccountException(e);
         }
-    }
-
-    /*
-     * This hack is used because accountBO.changeStatus uses userContext details. Should try to remove/improve in
-     * refactoring.
-     *
-     * The specific situation that required this hack is when a savings account is inactive and a payment is made (needs
-     * to be changes to active).
-     *
-     * Other 'changeStatus' sitations cater for this by setting values into the account's usercontext at the UI level (a
-     * different hack)
-     */
-    private void setThisUserContext() throws AccountException {
-
-        final PersonnelBO userForUserContext;
-        try {
-            userForUserContext = getPersonnelPersistence().getPersonnel(this.getCreatedBy());
-        } catch (PersistenceException pe) {
-            throw new AccountException(pe);
-        }
-
-        UserContext userContext = new UserContext();
-        userContext.setLocaleId(userForUserContext.getLocaleId());
-        userContext.setId(userForUserContext.getPersonnelId());
-        this.setUserContext(userContext);
     }
 
     /**
@@ -847,11 +711,10 @@ public class AccountBO extends AbstractBusinessObject {
         return findMostRecentPaymentByPaymentDate();
     }
 
-    public AccountPaymentEntity findMostRecentPaymentByPaymentDate() {
+    private AccountPaymentEntity findMostRecentPaymentByPaymentDate(List<AccountPaymentEntity> recentAccountPayments) {
 
         AccountPaymentEntity mostRecentPayment = null;
 
-        List<AccountPaymentEntity> recentAccountPayments = new ArrayList<AccountPaymentEntity>(this.accountPayments);
         if (!recentAccountPayments.isEmpty()) {
             mostRecentPayment = recentAccountPayments.get(0);
             for (AccountPaymentEntity accountPaymentEntity : recentAccountPayments) {
@@ -863,6 +726,23 @@ public class AccountBO extends AbstractBusinessObject {
         }
 
         return mostRecentPayment;
+    }
+
+    public AccountPaymentEntity findMostRecentPaymentByPaymentDate() {
+        return findMostRecentPaymentByPaymentDate(new ArrayList<AccountPaymentEntity>(this.accountPayments));
+    }
+
+    /**
+     * This method skips zero-amount payments, ie. these which were reversed by the  "payment adjustment" process
+     */
+    public AccountPaymentEntity findMostRecentNonzeroPaymentByPaymentDate() {
+        List<AccountPaymentEntity> nonzeroPayments = new ArrayList<AccountPaymentEntity>();
+        for (AccountPaymentEntity payment : this.accountPayments) {
+            if (payment.getAmount().isNonZero()) {
+                nonzeroPayments.add(payment);
+            }
+        }
+        return findMostRecentPaymentByPaymentDate(nonzeroPayments);
     }
 
     public AccountPaymentEntity getLastPmntToBeAdjusted() {
@@ -1080,15 +960,13 @@ public class AccountBO extends AbstractBusinessObject {
         return dueInstallments;
     }
 
-    public boolean isTrxnDateBeforePreviousMeetingDateAllowed(final Date trxnDate) {
-        try {
-            Date meetingDate = getCustomerPersistence().getLastMeetingDateForCustomer(getCustomer().getCustomerId());
+    private boolean isTrxnDateBeforePreviousMeetingDateAllowed(final Date trxnDate, Date meetingDate, boolean repaymentIndependentOfMeetingEnabled) {
 
-            if (getConfigurationPersistence().isRepaymentIndepOfMeetingEnabled()) {
+            if (repaymentIndependentOfMeetingEnabled) {
                 // payment date for loans must be >= disbursement date
                 if (this instanceof LoanBO) {
-                    Date apporvalDate = this.getAccountApprovalDate();
-                    return trxnDate.compareTo(DateUtils.getDateWithoutTimeStamp(apporvalDate)) >= 0;
+                    Date approvalDate = this.getAccountApprovalDate();
+                    return trxnDate.compareTo(DateUtils.getDateWithoutTimeStamp(approvalDate)) >= 0;
                 }
                 // must be >= creation date for other accounts
                 return trxnDate.compareTo(DateUtils.getDateWithoutTimeStamp(this.getCreatedDate())) >= 0;
@@ -1096,18 +974,11 @@ public class AccountBO extends AbstractBusinessObject {
                     return trxnDate.compareTo(DateUtils.getDateWithoutTimeStamp(meetingDate)) >= 0;
             }
             return false;
-        } catch (PersistenceException e) {
-            // This should only occur if Customer is null which shouldn't
-            // happen.
-            // Or we had some configuration/binding error, so we'll throw a
-            // runtime exception here.
-            throw new IllegalStateException(e);
-        }
     }
 
-    public boolean isTrxnDateValid(final Date trxnDate) throws AccountException {
+    public boolean isTrxnDateValid(final Date trxnDate, Date lastCustomerMeetingDate, boolean repaymentIndependentOfMeetingEnabled) {
         if (AccountingRules.isBackDatedTxnAllowed()) {
-            return isTrxnDateBeforePreviousMeetingDateAllowed(trxnDate);
+            return isTrxnDateBeforePreviousMeetingDateAllowed(trxnDate, lastCustomerMeetingDate, repaymentIndependentOfMeetingEnabled);
         }
         return trxnDate.equals(DateUtils.getCurrentDateWithoutTimeStamp());
     }
@@ -1140,9 +1011,6 @@ public class AccountBO extends AbstractBusinessObject {
 
     protected void updateAccountActivity(final Money principal, final Money interest, final Money fee,
             final Money penalty, final Short personnelId, final String description) throws AccountException {
-    }
-
-    public void waiveAmountDue(final WaiveEnum waiveType) throws AccountException {
     }
 
     public void waiveAmountOverDue(final WaiveEnum waiveType) throws AccountException {
@@ -1552,7 +1420,7 @@ public class AccountBO extends AbstractBusinessObject {
         this.accountActionDates.clear();
     }
 
-    protected void updateInstallmentAfterAdjustment(final List<AccountTrxnEntity> reversedTrxns)
+    protected void updateInstallmentAfterAdjustment(final List<AccountTrxnEntity> reversedTrxns, PersonnelBO loggedInUser)
             throws AccountException {
     }
 
@@ -1708,14 +1576,6 @@ public class AccountBO extends AbstractBusinessObject {
         this.addAccountFlag(accountStateFlagEntity);
     }
 
-    private PersonnelBO getLoggedInUser() throws AccountException {
-        try {
-            return getPersonnelPersistence().getPersonnel(getUserContext().getId());
-        } catch (PersistenceException pe) {
-            throw new AccountException(pe);
-        }
-    }
-
     protected void updateCustomFields(final List<CustomFieldDto> customFields) throws InvalidDateException {
         if (customFields == null) {
             return;
@@ -1824,5 +1684,17 @@ public class AccountBO extends AbstractBusinessObject {
     @Deprecated
     public void setAccountId(Integer accountId) {
         this.accountId = accountId;
+    }
+
+    public void setAccountCustomFields(Set<AccountCustomFieldEntity> accountCustomFields) {
+        this.accountCustomFields = accountCustomFields;
+    }
+
+    public Short getOfficeId() {
+        return office.getOfficeId();
+    }
+
+    public boolean isCustomerAccount() {
+        return AccountTypes.CUSTOMER_ACCOUNT.equals(this.getType());
     }
 }

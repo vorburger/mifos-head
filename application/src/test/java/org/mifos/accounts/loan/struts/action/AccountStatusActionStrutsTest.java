@@ -33,8 +33,8 @@ import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.center.business.CenterBO;
 import org.mifos.customers.client.business.ClientBO;
 import org.mifos.customers.group.business.GroupBO;
-import org.mifos.customers.personnel.business.PersonnelDto;
 import org.mifos.customers.util.helpers.CustomerStatus;
+import org.mifos.dto.domain.PersonnelDto;
 import org.mifos.framework.MifosMockStrutsTestCase;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
 import org.mifos.framework.util.helpers.Constants;
@@ -59,6 +59,7 @@ public class AccountStatusActionStrutsTest extends MifosMockStrutsTestCase {
 
     protected GroupBO group;
 
+    @SuppressWarnings("unused")
     private ClientBO client;
 
     private MeetingBO meeting;
@@ -99,6 +100,7 @@ public class AccountStatusActionStrutsTest extends MifosMockStrutsTestCase {
         verifyForward(ActionForwards.changeAccountStatus_success.toString());
     }
 
+    @SuppressWarnings("unchecked")
     public void testSearchResults() throws Exception {
         createCustomers();
         account = getLoanAccount(group);
@@ -150,19 +152,6 @@ public class AccountStatusActionStrutsTest extends MifosMockStrutsTestCase {
         addRequestParameter("method", Methods.searchResults.toString());
         actionPerform();
         verifyInputForward();
-    }
-
-    public void testGetLoanOfficers() throws Exception {
-        createCustomers();
-        account = getLoanAccount(group);
-        setRequestPathInfo("/ChangeAccountStatus.do");
-        addRequestParameter(Constants.CURRENTFLOWKEY, flowKey);
-        addRequestParameter("method", "getLoanOfficers");
-        addRequestParameter("officeId", account.getOffice().getOfficeId().toString());
-        actionPerform();
-        verifyForward(ActionForwards.changeAccountStatus_success.toString());
-        Assert.assertNotNull(SessionUtils.getAttribute(LoanConstants.LOAN_OFFICERS, request));
-       Assert.assertEquals(1, ((List<PersonnelDto>) SessionUtils.getAttribute(LoanConstants.LOAN_OFFICERS, request)).size());
     }
 
     public void testUpdate() throws Exception {

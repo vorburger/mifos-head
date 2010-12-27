@@ -51,6 +51,7 @@ import org.mifos.config.util.helpers.ConfigurationConstants;
 import org.mifos.core.MifosRuntimeException;
 import org.mifos.framework.exceptions.PageExpiredException;
 import org.mifos.framework.struts.actionforms.BaseActionForm;
+import org.mifos.framework.util.LocalizationConverter;
 import org.mifos.framework.util.helpers.Constants;
 import org.mifos.framework.util.helpers.ConversionError;
 import org.mifos.framework.util.helpers.DateUtils;
@@ -308,8 +309,12 @@ public class LoanPrdActionForm extends BaseActionForm {
     private String cashFlowValidation;
 
     private String[] loanOfferingQGs;
-    private String cashFlowWarningThreshold;
-    private Double cashFlowWarningThresholdValue;
+    private String cashFlowThreshold;
+    private Double cashFlowThresholdValue;
+    private String indebtednessRatio;
+    private Double indebtednessRatioValue;
+    private String repaymentCapacity;
+    private Double repaymentCapacityValue;
 
 
     public Double getLastLoanDefaultLoanAmt1Value() {
@@ -1741,7 +1746,18 @@ public class LoanPrdActionForm extends BaseActionForm {
             recurAfter = "1";
             minNoInstallments = "1";
             minimumGapBetweenInstallments = 1;
+
         }
+        if((method != null) && method.equals(Methods.manage.toString())) {
+            cashFlowValidation = null;
+            cashFlowThreshold = null;
+            cashFlowThresholdValue = null;
+            repaymentCapacity = null;
+            repaymentCapacityValue = null;
+            indebtednessRatio = null;
+            indebtednessRatioValue = null;
+        }
+
         if (method != null
                 && (method.equals(Methods.preview.toString()) || method.equals(Methods.editPreview.toString()))) {
             intDedDisbursementFlag = null;
@@ -1755,6 +1771,13 @@ public class LoanPrdActionForm extends BaseActionForm {
             loanOfferingQGs = null;
             canConfigureVariableInstallments = null;
             cashFlowValidation = null;
+            cashFlowThreshold = null;
+            cashFlowThresholdValue = null;
+            repaymentCapacity = null;
+            repaymentCapacityValue = null;
+            indebtednessRatio = null;
+            indebtednessRatioValue = null;
+
         }
         logger.debug("reset method of Savings Product Action form method called ");
     }
@@ -2440,10 +2463,9 @@ public class LoanPrdActionForm extends BaseActionForm {
             maxInterestResult = parseDoubleForInterest(maxInterestRate);
             errorList = maxInterestResult.getErrors();
             if (errorList.size() > 0) {
-                for (int i = 0; i < errorList.size(); i++) {
+                for (ConversionError anErrorList : errorList) {
                     addError(errors, ProductDefinitionConstants.ERRORMAXINTERESTINVALIDFORMAT,
-                            ProductDefinitionConstants.ERRORMAXINTERESTINVALIDFORMAT, getConversionErrorText(errorList
-                                    .get(i), locale));
+                            ProductDefinitionConstants.ERRORMAXINTERESTINVALIDFORMAT, getConversionErrorText(anErrorList, locale));
                 }
             } else {
                 maxInterest = maxInterestResult.getDoubleValue();
@@ -2504,35 +2526,126 @@ public class LoanPrdActionForm extends BaseActionForm {
     }
 
     private void validateCashFlow(ActionErrors actionErrors, Locale locale) {
+        validateCashFlowThreshold(actionErrors, locale);
+        validateIndebtednessRatio(actionErrors, locale);
+        validateRepaymentCapacity(actionErrors, locale);
+    }
 
-        DoubleConversionResult cashFlowWarningThresholdResult = null;
+    private void validateCashFlowThreshold(ActionErrors actionErrors, Locale locale) {
         Double cashFlowThreshold = null;
-        List<ConversionError> errorList = null;
-
         if(getCashFlowValidation()) {
-            if(cashFlowWarningThreshold != null && (!cashFlowWarningThreshold.trim().equals(""))){
-
-                cashFlowWarningThresholdResult = parseDoubleForCashFlowThreshold(cashFlowWarningThreshold);
-
-                errorList = cashFlowWarningThresholdResult.getErrors();
+            if(StringUtils.isNotBlank(this.cashFlowThreshold)){
+                DoubleConversionResult cashFlowThresholdResult = parseDoubleForCashFlowThreshold(this.cashFlowThreshold);
+                List<ConversionError> errorList = cashFlowThresholdResult.getErrors();
                 if (errorList.size() > 0) {
-                    for (int i = 0; i < errorList.size(); i++) {
-                        addError(actionErrors, cashFlowWarningThreshold,
-                                ProductDefinitionConstants.CASHFLOW_WARNING_THRESHOLD_INVALID_FORMAT, getConversionErrorText(errorList
-                                        .get(i), locale));
+                    for (ConversionError anErrorList : errorList) {
+                        addError(actionErrors, ProductDefinitionConstants.CASHFLOW_WARNING_THRESHOLD_INVALID_FORMAT,
+                                ProductDefinitionConstants.CASHFLOW_WARNING_THRESHOLD_INVALID_FORMAT, getConversionErrorText(anErrorList, locale));
                     }
                 } else {
-                    cashFlowThreshold = cashFlowWarningThresholdResult.getDoubleValue();
+                    cashFlowThreshold = cashFlowThresholdResult.getDoubleValue();
                 }
             }
-
             if(cashFlowThreshold != null) {
-                if(cashFlowThreshold >= AccountingRules.getCashFlowWarningThreshold()) {
-                    addError(actionErrors,"cashFlowWarningThreshold",ProductDefinitionConstants.CASHFLOW_WARNING_THRESHOLD_INVALID, String.valueOf(AccountingRules.getCashFlowWarningThreshold()));
+                if(cashFlowThreshold >= getMaxCashFlowThreshold()) {
+                    addError(actionErrors,"cashFlowThreshold",ProductDefinitionConstants.CASHFLOW_THRESHOLD_INVALID, String.valueOf(getMaxCashFlowThreshold()));
                 }
-                cashFlowWarningThresholdValue = cashFlowThreshold;
+                cashFlowThresholdValue = cashFlowThreshold;
             }
+        }
+    }
 
+    DoubleConversionResult parseDoubleForCashFlowThreshold(String doubleString){
+        return new LocalizationConverter().parseDoubleForCashFlowValidations(doubleString,
+                ConversionError.CASH_FLOW_THRESHOLD_OUT_OF_RANGE,
+                getMinCashFlowThreshold(), getMaxCashFlowThreshold());
+    }
+
+
+    DoubleConversionResult parseDoubleForIndebtednessRatio(String doubleString){
+        return new LocalizationConverter().parseDoubleForCashFlowValidations(doubleString,
+                ConversionError.INDEBTEDNESS_RATIO_OUT_OF_RANGE,
+                getMinIndebtednessRatio(), getMaxIndebtednessRatio());
+    }
+
+
+    DoubleConversionResult parseDoubleForRepaymentCapacity(String doubleString){
+        return new LocalizationConverter().parseDoubleForCashFlowValidations(doubleString,
+                ConversionError.REPAYMENT_CAPACITY_OUT_OF_RANGE,
+                getMinRepaymentCapacity(), getMaxRepaymentCapacity());
+    }
+
+    public Double getMaxCashFlowThreshold() {
+        return AccountingRules.getMaxCashFlowThreshold();
+    }
+
+    public Double getMinCashFlowThreshold() {
+        return AccountingRules.getMinCashFlowThreshold();
+    }
+
+    public Double getMaxIndebtednessRatio() {
+        return AccountingRules.getMaxIndebtednessRatio();
+    }
+
+    public Double getMinIndebtednessRatio() {
+        return AccountingRules.getMinIndebtednessRatio();
+    }
+
+    public Double getMaxRepaymentCapacity() {
+        return AccountingRules.getMaxRepaymentCapacity();
+    }
+
+    public Double getMinRepaymentCapacity() {
+        return AccountingRules.getMinRepaymentCapacity();
+    }
+
+
+
+    private void validateIndebtednessRatio(ActionErrors actionErrors, Locale locale) {
+        Double indebtednessRatio = null;
+        if(getCashFlowValidation()) {
+            if(StringUtils.isNotBlank(this.indebtednessRatio)){
+                DoubleConversionResult indebtednessRatioResult = parseDoubleForIndebtednessRatio(this.indebtednessRatio);
+                List<ConversionError> errorList = indebtednessRatioResult.getErrors();
+                if (errorList.size() > 0) {
+                    for (ConversionError anErrorList : errorList) {
+                        addError(actionErrors, ProductDefinitionConstants.INDEBTEDNESS_RATIO_INVALID_FORMAT,
+                                ProductDefinitionConstants.INDEBTEDNESS_RATIO_INVALID_FORMAT, getConversionErrorText(anErrorList, locale));
+                    }
+                } else {
+                    indebtednessRatio = indebtednessRatioResult.getDoubleValue();
+                }
+            }
+            if(indebtednessRatio != null) {
+                if(indebtednessRatio >= getMaxIndebtednessRatio()) {
+                    addError(actionErrors,"indebtednessRatio",ProductDefinitionConstants.INDEBTEDNESS_RATIO_INVALID, String.valueOf(getMaxIndebtednessRatio()));
+                }
+                indebtednessRatioValue = indebtednessRatio;
+            }
+        }
+    }
+
+    private void validateRepaymentCapacity(ActionErrors actionErrors, Locale locale) {
+        Double repaymentCapacity = null;
+        if(getCashFlowValidation()) {
+            if(StringUtils.isNotBlank(this.repaymentCapacity)){
+                DoubleConversionResult repaymentCapacityResult = parseDoubleForRepaymentCapacity(this.repaymentCapacity);
+                List<ConversionError> errorList = repaymentCapacityResult.getErrors();
+                if (errorList.size() > 0) {
+                    for (ConversionError anErrorList : errorList) {
+                        addError(actionErrors, ProductDefinitionConstants.REPAYMENT_CAPACITY_INVALID_FORMAT,
+                                ProductDefinitionConstants.REPAYMENT_CAPACITY_INVALID_FORMAT, getConversionErrorText(anErrorList, locale));
+                    }
+                } else {
+                    repaymentCapacity = repaymentCapacityResult.getDoubleValue();
+                }
+            }
+            if(repaymentCapacity != null) {
+                if(repaymentCapacity >= getMaxRepaymentCapacity()) {
+                    addError(actionErrors,"repaymentCapacity",ProductDefinitionConstants.REPAYMENT_CAPACITY_INVALID, String.valueOf(getMaxRepaymentCapacity()));
+                }
+                repaymentCapacityValue = repaymentCapacity;
+            }
         }
     }
 
@@ -2613,7 +2726,6 @@ public class LoanPrdActionForm extends BaseActionForm {
 
             }
         }
-
     }
 
     private void validateLoanInstallments(ActionErrors errors, String sameForAllLoans, String forByLastLoanAtRow,
@@ -2879,9 +2991,6 @@ public class LoanPrdActionForm extends BaseActionForm {
         return getDoubleValueForMoney(minimumInstallmentAmount);
     }
 
-
-
-
     private void validateVariableInstallmentPeriods(ActionErrors actionErrors, Locale locale) {
         if (canConfigureVariableInstallments()) {
             validateMinimumGapForVariableInstallments(actionErrors);
@@ -2890,12 +2999,10 @@ public class LoanPrdActionForm extends BaseActionForm {
             validateMinimumInstallmentAmountForValriableInstallments(actionErrors, locale);
         }
     }
+
     public String[] getLoanOfferingQGs() {
         return loanOfferingQGs;
     }
-
-
-
 
     private void validateMinimumInstallmentAmountForValriableInstallments(ActionErrors actionErrors, Locale locale) {
         if (StringUtils.isNotEmpty(minimumInstallmentAmount)) {
@@ -2978,7 +3085,6 @@ public class LoanPrdActionForm extends BaseActionForm {
         return getBooleanValue(cashFlowValidation);
     }
 
-
     public void setCashFlowValidation(boolean cashFlowValidation) {
         this.setCashFlowValidation(getStringValue(cashFlowValidation));
     }
@@ -2988,23 +3094,52 @@ public class LoanPrdActionForm extends BaseActionForm {
 
     }
 
-
-    public void setCashFlowWarningThreshold(String cashFlowWarningThreshold) {
-        this.cashFlowWarningThreshold = cashFlowWarningThreshold;
-    }
-
     public void setLoanOfferingQGs(String[] loanOfferingQGs) {
         this.loanOfferingQGs = loanOfferingQGs;
     }
-    public String getCashFlowWarningThreshold() {
-        return cashFlowWarningThreshold;
+
+    public String getCashFlowThreshold() {
+        return cashFlowThreshold;
     }
 
-    public Double getCashFlowWarningThresholdValue() {
-        if (StringUtils.isEmpty(cashFlowWarningThreshold)) {
-            return cashFlowWarningThresholdValue;
+    public String getIndebtednessRatio() {
+        return indebtednessRatio;
+    }
+
+    public String getRepaymentCapacity() {
+        return repaymentCapacity;
+    }
+
+    public void setRepaymentCapacity(String repaymentCapacity) {
+        this.repaymentCapacity = repaymentCapacity;
+    }
+
+    public void setCashFlowThreshold(String cashFlowThreshold) {
+        this.cashFlowThreshold = cashFlowThreshold;
+    }
+
+    public void setIndebtednessRatio(String indebtednessRatio) {
+        this.indebtednessRatio = indebtednessRatio;
+    }
+
+    public Double getCashFlowThresholdValue() {
+        if (StringUtils.isEmpty(cashFlowThreshold)) {
+            return cashFlowThresholdValue;
         }
-        return getDoubleValue(cashFlowWarningThreshold);
+        return getDoubleValue(cashFlowThreshold);
     }
 
+    public Double getIndebtednessRatioValue() {
+        if (StringUtils.isEmpty(indebtednessRatio)) {
+            return indebtednessRatioValue;
+        }
+        return getDoubleValue(indebtednessRatio);
+    }
+
+    public Double getRepaymentCapacityValue() {
+        if (StringUtils.isEmpty(repaymentCapacity)) {
+            return repaymentCapacityValue;
+        }
+        return getDoubleValue(repaymentCapacity);
+    }
 }

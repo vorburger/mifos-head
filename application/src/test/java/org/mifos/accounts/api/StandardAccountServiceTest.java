@@ -20,6 +20,20 @@
 
 package org.mifos.accounts.api;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyShort;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.joda.time.LocalDate;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -35,29 +49,21 @@ import org.mifos.accounts.persistence.AccountPersistence;
 import org.mifos.application.collectionsheet.persistence.LoanAccountBuilder;
 import org.mifos.config.persistence.ConfigurationPersistence;
 import org.mifos.customers.business.CustomerBO;
+import org.mifos.customers.persistence.CustomerDao;
 import org.mifos.customers.persistence.CustomerPersistence;
 import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.personnel.persistence.PersonnelDao;
 import org.mifos.customers.personnel.persistence.PersonnelPersistence;
+import org.mifos.dto.domain.AccountPaymentParametersDto;
+import org.mifos.dto.domain.AccountReferenceDto;
+import org.mifos.dto.domain.PaymentTypeDto;
+import org.mifos.dto.domain.UserReferenceDto;
 import org.mifos.framework.TestUtils;
 import org.mifos.framework.exceptions.PersistenceException;
+import org.mifos.framework.hibernate.helper.HibernateTransactionHelper;
 import org.mifos.framework.util.helpers.Money;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyShort;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class StandardAccountServiceTest {
@@ -98,16 +104,19 @@ public class StandardAccountServiceTest {
     @Mock
     private LoanBusinessService loanBusinessService;
 
+    @Mock
+    private CustomerDao customerDao;
+
+    @Mock
+    private HibernateTransactionHelper transactionHelper;
+
     @Before
     public void setup() {
         standardAccountService = new StandardAccountService(accountPersistence, loanPersistence,
-                acceptedPaymentTypePersistence, personnelDao, loanBusinessService);
+                acceptedPaymentTypePersistence, personnelDao, customerDao, loanBusinessService, transactionHelper);
         Money.setDefaultCurrency(TestUtils.RUPEE);
         accountBO = new LoanAccountBuilder().withCustomer(customerBO).build();
         accountBO.setAccountPersistence(accountPersistence);
-        accountBO.setCustomerPersistence(customerPersistence);
-        accountBO.setConfigurationPersistence(configurationPersistence);
-        accountBO.setPersonnelPersistence(personnelPersistence);
     }
 
     @Ignore

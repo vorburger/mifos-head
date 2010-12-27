@@ -20,14 +20,14 @@
 
 package org.mifos.accounts.util.helpers;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
 import org.mifos.application.admin.servicefacade.InvalidDateException;
 import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.framework.util.helpers.Money;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 
 /*
  * Used to hold information entered about a payment made.
@@ -35,20 +35,14 @@ import java.util.List;
  */
 public class PaymentData {
 
-    private Money totalAmount;
-
+    private final Money totalAmount;
     private CustomerBO customer;
-
-    private PersonnelBO personnel;
-
+    private final PersonnelBO personnel;
     private Date transactionDate;
 
     private String receiptNum;
-
     private Date receiptDate;
-
-    private Short paymentTypeId;
-
+    private final Short paymentTypeId;
     private String comment;
 
     /*
@@ -57,38 +51,26 @@ public class PaymentData {
      */
     private List<AccountPaymentData> accountPayments;
 
-    private PaymentData(Money totalAmount, PersonnelBO personnel, Short paymentId, Date transactionDate) {
-        accountPayments = new ArrayList<AccountPaymentData>();
-        setTotalAmount(totalAmount);
-        setPersonnel(personnel);
-        setPaymentTypeId(paymentId);
-        setTransactionDate(transactionDate);
-    }
-
-    private PaymentData(Money totalAmount, PersonnelBO personnel, Short paymentId, Date transactionDate,
-            String receiptNum, Date receiptDate) {
-        accountPayments = new ArrayList<AccountPaymentData>();
-        setTotalAmount(totalAmount);
-        setPersonnel(personnel);
-        setPaymentTypeId(paymentId);
-        setTransactionDate(transactionDate);
-        setReceiptNum(receiptNum);
-        setReceiptDate(receiptDate);
-    }
-
     public static PaymentData createPaymentData(Money totalAmount, PersonnelBO personnel, Short paymentId,
             Date transactionDate) {
         return new PaymentData(totalAmount, personnel, paymentId, transactionDate);
     }
 
-    public static PaymentData createReceiptPaymentData(ReceiptPaymentDataTemplate template) throws InvalidDateException {
-        return new PaymentData(template.getTotalAmount(), template.getPersonnel(), template.getPaymentTypeId(),
-                template.getTransactionDate(), template.getPaymentReceiptNumber(), template.getPaymentReceiptDate());
-    }
-
+    /**
+     * @deprecated
+     */
+    @Deprecated
     public static PaymentData createPaymentData(PaymentDataTemplate template) throws InvalidDateException {
         return new PaymentData(template.getTotalAmount(), template.getPersonnel(), template.getPaymentTypeId(),
                 template.getTransactionDate());
+    }
+
+    public PaymentData(Money totalAmount, PersonnelBO personnel, Short paymentId, Date transactionDate) {
+        accountPayments = new ArrayList<AccountPaymentData>();
+        this.totalAmount = totalAmount;
+        this.personnel = personnel;
+        this.paymentTypeId = paymentId;
+        this.transactionDate = transactionDate;
     }
 
     public List<AccountPaymentData> getAccountPayments() {
@@ -119,10 +101,6 @@ public class PaymentData {
         return transactionDate;
     }
 
-    private void setPersonnel(PersonnelBO personnel) {
-        this.personnel = personnel;
-    }
-
     public CustomerBO getCustomer() {
         return customer;
     }
@@ -131,24 +109,12 @@ public class PaymentData {
         this.customer = customer;
     }
 
-    private void setPaymentTypeId(Short paymentTypeId) {
-        this.paymentTypeId = paymentTypeId;
-    }
-
     public void setReceiptDate(Date receiptDate) {
         this.receiptDate = receiptDate;
     }
 
     public void setReceiptNum(String receiptNum) {
         this.receiptNum = receiptNum;
-    }
-
-    private void setTotalAmount(Money totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    private void setTransactionDate(Date transactionDate) {
-        this.transactionDate = transactionDate;
     }
 
     public void addAccountPaymentData(AccountPaymentData accountPaymentData) {
@@ -163,8 +129,8 @@ public class PaymentData {
         this.comment = comment;
     }
 
-
-    public java.sql.Date getTransactionDateAsSQLDate() {
-        return new java.sql.Date(getTransactionDate().getTime());
+    public void setTransactionDate(Date date) {
+        this.transactionDate = date;
     }
+
 }

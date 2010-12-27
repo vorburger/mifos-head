@@ -21,15 +21,19 @@ package org.mifos.accounts.loan.schedule.domain;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.mifos.accounts.loan.schedule.utils.Utilities.isGreaterThanZero;
 
 public class InstallmentPayment {
     private Date paidDate;
-    private BigDecimal principalPaid;
-    private BigDecimal interestPaid;
-    private BigDecimal feesPaid;
-    private BigDecimal extraInterestPaid;
+    private Map<InstallmentComponent, BigDecimal> paymentMap;
+
+    public InstallmentPayment() {
+        paymentMap = new LinkedHashMap<InstallmentComponent, BigDecimal>();
+        resetPaymentComponents();
+    }
 
     public Date getPaidDate() {
         return paidDate;
@@ -40,35 +44,59 @@ public class InstallmentPayment {
     }
 
     public BigDecimal getPrincipalPaid() {
-        return principalPaid == null ? BigDecimal.ZERO : principalPaid;
+        return paymentMap.get(InstallmentComponent.PRINCIPAL);
     }
 
     public void setPrincipalPaid(BigDecimal principalPaid) {
-        this.principalPaid = principalPaid;
+        paymentMap.put(InstallmentComponent.PRINCIPAL, principalPaid);
     }
 
     public BigDecimal getInterestPaid() {
-        return interestPaid == null ? BigDecimal.ZERO : interestPaid;
+        return paymentMap.get(InstallmentComponent.INTEREST);
     }
 
     public void setInterestPaid(BigDecimal interestPaid) {
-        this.interestPaid = interestPaid;
-    }
-
-    public BigDecimal getFeesPaid() {
-        return feesPaid == null ? BigDecimal.ZERO : feesPaid;
-    }
-
-    public void setFeesPaid(BigDecimal feesPaid) {
-        this.feesPaid = feesPaid;
+        paymentMap.put(InstallmentComponent.INTEREST, interestPaid);
     }
 
     public BigDecimal getExtraInterestPaid() {
-        return extraInterestPaid == null ? BigDecimal.ZERO : extraInterestPaid;
+        return paymentMap.get(InstallmentComponent.EXTRA_INTEREST);
     }
 
     public void setExtraInterestPaid(BigDecimal extraInterestPaid) {
-        this.extraInterestPaid = extraInterestPaid;
+        paymentMap.put(InstallmentComponent.EXTRA_INTEREST, extraInterestPaid);
+    }
+
+    public BigDecimal getPenaltyPaid() {
+        return paymentMap.get(InstallmentComponent.PENALTY);
+    }
+
+    public void setPenaltyPaid(BigDecimal penaltyPaid) {
+        paymentMap.put(InstallmentComponent.PENALTY, penaltyPaid);
+    }
+
+    public void setMiscPenaltyPaid(BigDecimal miscPenaltyPaid) {
+        paymentMap.put(InstallmentComponent.MISC_PENALTY, miscPenaltyPaid);
+    }
+
+    public BigDecimal getMiscPenaltyPaid() {
+        return paymentMap.get(InstallmentComponent.MISC_PENALTY);
+    }
+
+    public BigDecimal getMiscFeesPaid() {
+        return paymentMap.get(InstallmentComponent.MISC_FEES);
+    }
+
+    public void setMiscFeesPaid(BigDecimal miscFeesPaid) {
+        paymentMap.put(InstallmentComponent.MISC_FEES, miscFeesPaid);
+    }
+
+    public BigDecimal getFeesPaid() {
+        return paymentMap.get(InstallmentComponent.FEES);
+    }
+
+    public void setFeesPaid(BigDecimal feesPaid) {
+        paymentMap.put(InstallmentComponent.FEES, feesPaid);
     }
 
     public boolean isPartialPayment() {
@@ -78,4 +106,23 @@ public class InstallmentPayment {
     public boolean isPrincipalPayment() {
         return isGreaterThanZero(getPrincipalPaid());
     }
+
+    private void resetPaymentComponents() {
+        paymentMap.put(InstallmentComponent.PRINCIPAL, BigDecimal.ZERO);
+        paymentMap.put(InstallmentComponent.INTEREST, BigDecimal.ZERO);
+        paymentMap.put(InstallmentComponent.EXTRA_INTEREST, BigDecimal.ZERO);
+        paymentMap.put(InstallmentComponent.FEES, BigDecimal.ZERO);
+        paymentMap.put(InstallmentComponent.MISC_FEES, BigDecimal.ZERO);
+        paymentMap.put(InstallmentComponent.PENALTY, BigDecimal.ZERO);
+        paymentMap.put(InstallmentComponent.MISC_PENALTY, BigDecimal.ZERO);
+    }
+
+    /**
+        * @deprecated Use the corresponding setters for allotting payment components
+        */
+    @Deprecated
+    void setAmount(InstallmentComponent component, BigDecimal amount) {
+        paymentMap.put(component, amount);
+    }
+
 }

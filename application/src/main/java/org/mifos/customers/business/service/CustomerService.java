@@ -25,27 +25,28 @@ import java.util.List;
 import org.mifos.accounts.business.AccountFeesEntity;
 import org.mifos.accounts.productdefinition.business.SavingsOfferingBO;
 import org.mifos.application.meeting.business.MeetingBO;
-import org.mifos.application.servicefacade.CenterUpdate;
-import org.mifos.application.servicefacade.ClientFamilyInfoUpdate;
-import org.mifos.application.servicefacade.ClientMfiInfoUpdate;
-import org.mifos.application.servicefacade.ClientPersonalInfoUpdate;
 import org.mifos.application.servicefacade.CustomerStatusUpdate;
-import org.mifos.application.servicefacade.GroupUpdate;
-import org.mifos.application.servicefacade.MeetingUpdateRequest;
 import org.mifos.customers.business.CustomerNoteEntity;
 import org.mifos.customers.center.business.CenterBO;
 import org.mifos.customers.client.business.ClientBO;
 import org.mifos.customers.exceptions.CustomerException;
 import org.mifos.customers.group.business.GroupBO;
 import org.mifos.customers.office.business.OfficeBO;
+import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.util.helpers.CustomerStatus;
 import org.mifos.customers.util.helpers.CustomerStatusFlag;
+import org.mifos.dto.domain.CenterUpdate;
+import org.mifos.dto.domain.ClientFamilyInfoUpdate;
+import org.mifos.dto.domain.ClientMfiInfoUpdate;
+import org.mifos.dto.domain.ClientPersonalInfoUpdate;
+import org.mifos.dto.domain.GroupUpdate;
+import org.mifos.dto.domain.MeetingUpdateRequest;
 import org.mifos.framework.exceptions.ApplicationException;
 import org.mifos.security.util.UserContext;
 
 public interface CustomerService {
 
-    void createCenter(CenterBO center, MeetingBO meeting, List<AccountFeesEntity> accountFees) throws ApplicationException;
+    void createCenter(CenterBO center, MeetingBO meeting, List<AccountFeesEntity> accountFees);
 
     void createGroup(GroupBO group, MeetingBO meeting, List<AccountFeesEntity> accountFees) throws CustomerException;
 
@@ -55,9 +56,9 @@ public interface CustomerService {
 
     void updateGroup(UserContext userContext, GroupUpdate groupUpdate) throws ApplicationException;
 
-    GroupBO transferGroupTo(GroupBO group, CenterBO transferToCenter) throws CustomerException;
+    String transferGroupTo(GroupBO group, CenterBO transferToCenter) throws CustomerException;
 
-    GroupBO transferGroupTo(GroupBO group, OfficeBO transferToOffice) throws CustomerException;
+    String transferGroupTo(GroupBO group, OfficeBO transferToOffice) throws CustomerException;
 
     ClientBO transferClientTo(UserContext userContext, Integer groupId, String clientGlobalCustNum, Integer previousClientVersionNo)  throws CustomerException;
 
@@ -76,4 +77,8 @@ public interface CustomerService {
     void updateClientMfiInfo(UserContext userContext, ClientMfiInfoUpdate clientMfiInfoUpdate) throws CustomerException;
 
     void updateCustomerMeetingSchedule(MeetingUpdateRequest meetingUpdateRequest, UserContext userContext) throws ApplicationException;
+
+    void removeGroupMembership(ClientBO client, PersonnelBO loanOfficer, CustomerNoteEntity accountNotesEntity, Short localeId);
+
+    void transferClientTo(ClientBO client, OfficeBO receivingBranch);
 }

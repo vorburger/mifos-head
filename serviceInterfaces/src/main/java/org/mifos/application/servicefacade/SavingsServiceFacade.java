@@ -23,18 +23,27 @@ package org.mifos.application.servicefacade;
 import java.util.List;
 
 import org.joda.time.LocalDate;
+import org.mifos.dto.domain.AuditLogDto;
+import org.mifos.dto.domain.CreateAccountNote;
+import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.NoteSearchDto;
 import org.mifos.dto.domain.PrdOfferingDto;
 import org.mifos.dto.domain.SavingsAccountClosureDto;
 import org.mifos.dto.domain.SavingsAccountCreationDto;
-import org.mifos.dto.domain.SavingsAccountStatusDto;
-import org.mifos.dto.domain.SavingsAccountUpdateStatus;
+import org.mifos.dto.domain.SavingsAccountDetailDto;
+import org.mifos.dto.domain.AccountStatusDto;
+import org.mifos.dto.domain.AccountUpdateStatus;
 import org.mifos.dto.domain.SavingsAdjustmentDto;
 import org.mifos.dto.domain.SavingsDepositDto;
+import org.mifos.dto.domain.SavingsStatusChangeHistoryDto;
 import org.mifos.dto.domain.SavingsWithdrawalDto;
 import org.mifos.dto.screen.DepositWithdrawalReferenceDto;
+import org.mifos.dto.screen.NotesSearchResultsDto;
 import org.mifos.dto.screen.SavingsAccountDepositDueDto;
 import org.mifos.dto.screen.SavingsAdjustmentReferenceDto;
 import org.mifos.dto.screen.SavingsProductReferenceDto;
+import org.mifos.dto.screen.SavingsRecentActivityDto;
+import org.mifos.dto.screen.SavingsTransactionHistoryDto;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SavingsServiceFacade {
@@ -46,13 +55,13 @@ public interface SavingsServiceFacade {
     void withdraw(SavingsWithdrawalDto savingsWithdrawal);
 
     @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_ADJUST_SAVINGS_DEPOSIT_OR_WITHDRAWAL')")
-    SavingsAdjustmentReferenceDto retrieveAdjustmentReferenceData(Long savingsId, Short localeId);
+    SavingsAdjustmentReferenceDto retrieveAdjustmentReferenceData(Long savingsId);
 
     @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_ADJUST_SAVINGS_DEPOSIT_OR_WITHDRAWAL')")
     void adjustTransaction(SavingsAdjustmentDto savingsAdjustment);
 
     @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_CLOSE_SAVINGS_ACCOUNT')")
-    SavingsAccountClosureDto retrieveClosingDetails(Long savingsId, LocalDate closureDate, Short localeId);
+    SavingsAccountClosureDto retrieveClosingDetails(Long savingsId, LocalDate closureDate);
 
     @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_CLOSE_SAVINGS_ACCOUNT')")
     void closeSavingsAccount(Long savingsId, String notes, SavingsWithdrawalDto closeAccount);
@@ -61,7 +70,7 @@ public interface SavingsServiceFacade {
     void postInterestForLastPostingPeriod(LocalDate dateOfBatchJob);
 
     @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_MAKE_SAVINGS_DEPOSIT_OR_WITHDRAWAL')")
-    DepositWithdrawalReferenceDto retrieveDepositWithdrawalReferenceData(Long savingsId, Integer customerId, Short localeId);
+    DepositWithdrawalReferenceDto retrieveDepositWithdrawalReferenceData(Long savingsId, Integer customerId);
 
     @PreAuthorize("isFullyAuthenticated()")
     List<PrdOfferingDto> retrieveApplicableSavingsProductsForCustomer(Integer customerId);
@@ -73,11 +82,47 @@ public interface SavingsServiceFacade {
     Long createSavingsAccount(SavingsAccountCreationDto savingsAccountCreation);
 
     @PreAuthorize("isFullyAuthenticated()")
-    SavingsAccountStatusDto retrieveAccountStatuses(Long savingsId, Short localeId);
+    AccountStatusDto retrieveAccountStatuses(Long savingsId);
 
     @PreAuthorize("isFullyAuthenticated()")
-    void updateSavingsAccountStatus(SavingsAccountUpdateStatus updateStatus, Short localeId);
+    void updateSavingsAccountStatus(AccountUpdateStatus updateStatus);
 
     @PreAuthorize("isFullyAuthenticated()")
-    SavingsAccountDepositDueDto retrieveDepositDueDetails(String savingsSystemId, Short localeId);
+    SavingsAccountDepositDueDto retrieveDepositDueDetails(String savingsSystemId);
+
+    @PreAuthorize("isFullyAuthenticated()")
+    List<SavingsRecentActivityDto> retrieveRecentSavingsActivities(Long savingsId);
+
+    @PreAuthorize("isFullyAuthenticated()")
+    List<SavingsTransactionHistoryDto> retrieveTransactionHistory(String globalAccountNum);
+
+    @PreAuthorize("isFullyAuthenticated()")
+    List<SavingsStatusChangeHistoryDto> retrieveStatusChangeHistory(String globalAccountNum);
+
+    @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_EDIT_UPDATE_SAVINGS_ACCOUNT')")
+    List<CustomFieldDto> retrieveCustomFieldsForEdit(String globalAccountNum);
+
+    @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_EDIT_UPDATE_SAVINGS_ACCOUNT')")
+    void updateSavingsAccountDetails(Long savingsId, String recommendedAmount, List<CustomFieldDto> accountCustomFieldSet);
+
+    @PreAuthorize("isFullyAuthenticated()")
+    SavingsAccountDetailDto retrieveSavingsAccountDetails(Long savingsId);
+
+    @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_WAIVE_NEXT_SAVINGS_DEPOSIT_DUE_AMOUNT')")
+    void waiveNextDepositAmountDue(Long savingsId);
+
+    @PreAuthorize("isFullyAuthenticated() and hasRole('ROLE_CAN_WAIVE_OVER_DUE_SAVINGS_DEPOSITS')")
+    void waiveDepositAmountOverDue(Long savingsId);
+
+    @PreAuthorize("isFullyAuthenticated()")
+    List<AuditLogDto> retrieveSavingsAccountAuditLogs(Long savingsId);
+
+    @PreAuthorize("isFullyAuthenticated()")
+    NotesSearchResultsDto retrievePagedNotesDto(NoteSearchDto noteSearch);
+
+    @PreAuthorize("isFullyAuthenticated()")
+    SavingsAccountDetailDto retrieveSavingsAccountNotes(Long savingsId);
+
+    @PreAuthorize("isFullyAuthenticated()")
+    void addNote(CreateAccountNote accountNote);
 }

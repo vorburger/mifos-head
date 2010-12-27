@@ -28,7 +28,6 @@ import org.mifos.accounts.loan.struts.action.MultipleLoanAccountsCreationAction;
 import org.mifos.accounts.loan.struts.action.RepayLoanAction;
 import org.mifos.accounts.loan.struts.action.ReverseLoanDisbursalAction;
 import org.mifos.accounts.productdefinition.struts.action.LoanPrdAction;
-import org.mifos.accounts.productdefinition.struts.action.SavingsPrdAction;
 import org.mifos.accounts.savings.struts.action.SavingsAction;
 import org.mifos.accounts.savings.struts.action.SavingsApplyAdjustmentAction;
 import org.mifos.accounts.savings.struts.action.SavingsClosureAction;
@@ -189,7 +188,6 @@ public class ActivityMapper {
         parseActionSecurity(ClientTransferAction.getSecurity());
         parseActionSecurity(GroupTransferAction.getSecurity());
         parseActionSecurity(MeetingAction.getSecurity());
-        parseActionSecurity(SavingsPrdAction.getSecurity());
         parseActionSecurity(LoanPrdAction.getSecurity());
         parseActionSecurity(FeeAction.getSecurity());
         parseActionSecurity(ChkListAction.getSecurity());
@@ -599,20 +597,21 @@ public class ActivityMapper {
                 new ActivityContext(getActivityIdForState(newSate), recordOfficeId, recordLoanOfficerId));
     }
 
-    public boolean isSavePermittedForCustomer(short newSate, UserContext userContext, Short recordOfficeId,
-            Short recordLoanOfficerId) {
+    public boolean isSavePermittedForCustomer(short newSate, UserContext userContext, Short recordOfficeId, Short recordLoanOfficerId) {
 
         final short activityId = getActivityIdForCustomerState(newSate);
 
-        if (recordOfficeId == null) {
-            recordOfficeId = userContext.getBranchId();
+        Short officeId = recordOfficeId;
+        if (officeId == null) {
+            officeId = userContext.getBranchId();
         }
 
-        if (recordLoanOfficerId == null) {
-            recordLoanOfficerId = userContext.getId();
+        Short loanOfficerId = recordLoanOfficerId;
+        if (loanOfficerId == null) {
+            loanOfficerId = userContext.getId();
         }
 
-        ActivityContext activityContext = new ActivityContext(activityId, recordOfficeId, recordLoanOfficerId);
+        ActivityContext activityContext = new ActivityContext(activityId, officeId, loanOfficerId);
 
         return AuthorizationManager.getInstance().isActivityAllowed(userContext, activityContext);
     }

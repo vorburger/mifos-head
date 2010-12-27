@@ -28,11 +28,15 @@ import org.apache.struts.action.ActionForward;
 import org.apache.struts.action.ActionMapping;
 import org.mifos.accounts.business.AccountBO;
 import org.mifos.accounts.business.service.AccountBusinessService;
+import org.mifos.accounts.persistence.AccountPersistence;
 import org.mifos.accounts.struts.actionforms.ApplyAdjustmentActionForm;
 import org.mifos.accounts.util.helpers.AccountTypes;
+import org.mifos.customers.personnel.business.PersonnelBO;
+import org.mifos.customers.personnel.persistence.PersonnelPersistence;
 import org.mifos.framework.business.service.BusinessService;
 import org.mifos.framework.exceptions.ApplicationException;
 import org.mifos.framework.exceptions.ServiceException;
+import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
 import org.mifos.framework.struts.action.BaseAction;
 import org.mifos.framework.util.helpers.CloseSession;
 import org.mifos.framework.util.helpers.Constants;
@@ -66,7 +70,7 @@ public class ApplyAdjustment extends BaseAction {
 
     @TransactionDemarcate(joinToken = true)
     public ActionForward loadAdjustment(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         ApplyAdjustmentActionForm appAdjustActionForm = (ApplyAdjustmentActionForm) form;
         AccountBO accnt = getBizService().findBySystemId(appAdjustActionForm.getGlobalAccountNum());
         SessionUtils.setAttribute(Constants.BUSINESS_KEY, accnt, request);
@@ -83,7 +87,7 @@ public class ApplyAdjustment extends BaseAction {
 
     @TransactionDemarcate(joinToken = true)
     public ActionForward loadAdjustmentWhenObligationMet(ActionMapping mapping, ActionForm form,
-            HttpServletRequest request, HttpServletResponse response) throws Exception {
+            HttpServletRequest request, @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         ApplyAdjustmentActionForm appAdjustActionForm = (ApplyAdjustmentActionForm) form;
         AccountBO accnt = getBizService().findBySystemId(appAdjustActionForm.getGlobalAccountNum());
         SessionUtils.setAttribute(Constants.BUSINESS_KEY, accnt, request);
@@ -93,8 +97,8 @@ public class ApplyAdjustment extends BaseAction {
     }
 
     @TransactionDemarcate(joinToken = true)
-    public ActionForward previewAdjustment(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+    public ActionForward previewAdjustment(ActionMapping mapping, @SuppressWarnings("unused") ActionForm form, HttpServletRequest request,
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         request.setAttribute("method", "previewAdjustment");
         return mapping.findForward("previewadj_success");
     }
@@ -102,7 +106,7 @@ public class ApplyAdjustment extends BaseAction {
     @TransactionDemarcate(validateAndResetToken = true)
     @CloseSession
     public ActionForward applyAdjustment(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         request.setAttribute("method", "applyAdjustment");
         ApplyAdjustmentActionForm appAdjustActionForm = (ApplyAdjustmentActionForm) form;
         AccountBO accountBOInSession = (AccountBO) SessionUtils.getAttribute(Constants.BUSINESS_KEY, request);
@@ -110,6 +114,7 @@ public class ApplyAdjustment extends BaseAction {
         checkVersionMismatch(accountBOInSession.getVersionNo(), accnt.getVersionNo());
         UserContext uc = (UserContext) SessionUtils.getAttribute(Constants.USER_CONTEXT_KEY, request.getSession());
         accnt.setUserContext(uc);
+        PersonnelBO loggedInUser = new PersonnelPersistence().findPersonnelById(uc.getId());
         if (accnt.getPersonnel() != null) {
             getBizService().checkPermissionForAdjustment(AccountTypes.LOAN_ACCOUNT, null, uc,
                     accnt.getOffice().getOfficeId(), accnt.getPersonnel().getPersonnelId());
@@ -118,8 +123,11 @@ public class ApplyAdjustment extends BaseAction {
                     accnt.getOffice().getOfficeId(), uc.getId());
         }
         try {
-            accnt.adjustLastPayment(appAdjustActionForm.getAdjustmentNote());
+            accnt.adjustLastPayment(appAdjustActionForm.getAdjustmentNote(), loggedInUser);
+            new AccountPersistence().createOrUpdate(accnt);
+            StaticHibernateUtil.commitTransaction();
         } catch (ApplicationException ae) {
+            StaticHibernateUtil.rollbackTransaction();
             request.setAttribute("method", "previewAdjustment");
             throw ae;
         }
@@ -128,18 +136,11 @@ public class ApplyAdjustment extends BaseAction {
     }
 
     @TransactionDemarcate(validateAndResetToken = true)
-    public ActionForward cancelAdjustment(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+    public ActionForward cancelAdjustment(ActionMapping mapping, ActionForm form, @SuppressWarnings("unused") HttpServletRequest request,
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         ApplyAdjustmentActionForm appAdjustActionForm = (ApplyAdjustmentActionForm) form;
         resetActionFormFields(appAdjustActionForm);
         return mapping.findForward("canceladj_success");
-    }
-
-    @Override
-    protected boolean skipActionFormToBusinessObjectConversion(String method) {
-
-        return true;
-
     }
 
     /**

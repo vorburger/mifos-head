@@ -23,16 +23,12 @@ package org.mifos.customers.client.persistence;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Blob;
-import java.util.HashMap;
-import java.util.List;
 
 import org.hibernate.Hibernate;
 import org.mifos.accounts.savings.persistence.SavingsPersistence;
-import org.mifos.application.NamedQueryConstants;
 import org.mifos.customers.client.business.ClientBO;
 import org.mifos.customers.exceptions.CustomerException;
 import org.mifos.customers.office.persistence.OfficePersistence;
-import org.mifos.customers.persistence.CustomerDao;
 import org.mifos.customers.persistence.CustomerPersistence;
 import org.mifos.customers.util.helpers.CustomerConstants;
 import org.mifos.framework.exceptions.PersistenceException;
@@ -56,25 +52,6 @@ public class ClientPersistence extends Persistence {
         } catch (IOException ioe) {
             throw new PersistenceException(ioe);
         }
-    }
-
-    public List<ClientBO> getActiveClientsUnderParent(final String searchId, final Short officeId) throws PersistenceException {
-        HashMap<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put("SEARCH_STRING", searchId + ".%");
-        queryParameters.put("OFFICE_ID", officeId);
-        List<ClientBO> queryResult = executeNamedQuery(NamedQueryConstants.ACTIVE_CLIENTS_UNDER_PARENT, queryParameters);
-        return queryResult;
-    }
-
-    /**
-     * @deprecated use {@link CustomerDao#findActiveClientsUnderGroup}
-     */
-    @Deprecated
-    public List<ClientBO> getActiveClientsUnderGroup(final Integer groupId) throws PersistenceException {
-        HashMap<String, Object> queryParameters = new HashMap<String, Object>();
-        queryParameters.put("GROUP_ID", groupId.intValue());
-        List<ClientBO> queryResult = executeNamedQuery(NamedQueryConstants.ACTIVE_CLIENTS_UNDER_GROUP, queryParameters);
-        return queryResult;
     }
 
     public CustomerPersistence getCustomerPersistence() {

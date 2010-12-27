@@ -41,6 +41,8 @@ import org.mifos.customers.group.business.GroupBO;
 import org.mifos.customers.office.business.OfficeBO;
 import org.mifos.customers.persistence.CustomerDao;
 import org.mifos.customers.personnel.business.PersonnelBO;
+import org.mifos.customers.personnel.business.PersonnelLevelEntity;
+import org.mifos.customers.personnel.business.PersonnelStatusEntity;
 import org.mifos.customers.personnel.persistence.PersonnelDao;
 import org.mifos.customers.personnel.util.helpers.PersonnelLevel;
 import org.mifos.customers.personnel.util.helpers.PersonnelStatus;
@@ -52,7 +54,7 @@ import org.mifos.framework.TestUtils;
 import org.mifos.framework.business.util.Address;
 import org.mifos.framework.business.util.Name;
 import org.mifos.framework.components.audit.business.AuditLog;
-import org.mifos.framework.components.audit.util.helpers.AuditConfigurtion;
+import org.mifos.framework.components.audit.util.helpers.AuditConfiguration;
 import org.mifos.framework.hibernate.helper.AuditTransactionForTests;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
 import org.mifos.framework.util.StandardTestingService;
@@ -115,7 +117,7 @@ public class CenterStatusChangeIntegrationTest extends MifosIntegrationTestCase 
         databaseCleaner.clean();
 
         Locale locale = Localization.getInstance().getMainLocale();
-        AuditConfigurtion.init(locale);
+        AuditConfiguration.init(locale);
 
         existingUser = IntegrationTestObjectMother.testUser();
         existingLoanOfficer = IntegrationTestObjectMother.testUser();
@@ -251,11 +253,11 @@ public class CenterStatusChangeIntegrationTest extends MifosIntegrationTestCase 
 
     private void updatePersonnel(PersonnelBO loanOfficer, PersonnelLevel personnelLevel, PersonnelStatus newStatus, OfficeBO office)
             throws Exception {
-        Address address = new Address("abcd", "abcd", "abcd", "abcd", "abcd", "abcd", "abcd", "abcd");
-        Name name = new Name("XYZ", null, null, "Last Name");
-        loanOfficer.update(newStatus, personnelLevel, office, Integer.valueOf("1"), Short.valueOf("1"), "ABCD",
-                "rajendersaini@yahoo.com", null, null, name, Integer.valueOf("1"), Integer.valueOf("1"), address, Short
-                        .valueOf("1"));
-        StaticHibernateUtil.flushAndClearSession();
+        PersonnelStatusEntity newStatusEntity = new PersonnelStatusEntity(newStatus);
+        loanOfficer.setStatus(newStatusEntity);
+
+        PersonnelLevelEntity level = new PersonnelLevelEntity(personnelLevel);
+        loanOfficer.setLevel(level);
+        IntegrationTestObjectMother.createPersonnel(loanOfficer);
     }
 }

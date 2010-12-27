@@ -30,8 +30,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.joda.time.DateTime;
 import org.joda.time.Days;
 import org.mifos.accounts.business.AccountBO;
@@ -48,17 +46,13 @@ import org.mifos.application.holiday.business.Holiday;
 import org.mifos.application.master.MessageLookup;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.meeting.business.MeetingBO;
-import org.mifos.application.servicefacade.ClientDetailDto;
-import org.mifos.application.servicefacade.ClientFamilyInfoUpdate;
-import org.mifos.application.servicefacade.ClientMfiInfoUpdate;
-import org.mifos.application.servicefacade.ClientPersonalInfoUpdate;
 import org.mifos.application.util.helpers.EntityType;
 import org.mifos.application.util.helpers.YesNoFlag;
 import org.mifos.config.ClientRules;
 import org.mifos.config.FiscalCalendarRules;
 import org.mifos.config.util.helpers.ConfigurationConstants;
+import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.business.CustomerBO;
-import org.mifos.customers.business.CustomerCustomFieldEntity;
 import org.mifos.customers.business.CustomerHierarchyEntity;
 import org.mifos.customers.business.CustomerMeetingEntity;
 import org.mifos.customers.business.CustomerStatusEntity;
@@ -72,14 +66,22 @@ import org.mifos.customers.office.persistence.OfficePersistence;
 import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.surveys.business.SurveyInstance;
 import org.mifos.customers.util.helpers.CustomerConstants;
-import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.util.helpers.CustomerStatus;
+import org.mifos.dto.domain.ClientFamilyInfoUpdate;
+import org.mifos.dto.domain.ClientMfiInfoUpdate;
+import org.mifos.dto.domain.ClientPersonalInfoUpdate;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.screen.ClientDetailDto;
+import org.mifos.dto.screen.ClientFamilyDetailDto;
+import org.mifos.dto.screen.ClientNameDetailDto;
+import org.mifos.dto.screen.ClientPersonalDetailDto;
 import org.mifos.framework.business.util.Address;
 import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.util.helpers.DateUtils;
 import org.mifos.framework.util.helpers.Money;
 import org.mifos.security.util.UserContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 
 /**
@@ -110,7 +112,7 @@ public class ClientBO extends CustomerBO {
 
     public static ClientBO createNewInGroupHierarchy(UserContext userContext, String clientName,
             CustomerStatus clientStatus, DateTime mfiJoiningDate, CustomerBO group, PersonnelBO formedBy,
-            List<CustomerCustomFieldEntity> customerCustomFields, ClientNameDetailEntity clientNameDetailEntity,
+            ClientNameDetailEntity clientNameDetailEntity,
             DateTime dateOfBirth, String governmentId, boolean trained, DateTime trainedDate, Short groupFlag,
             String clientFirstName, String clientLastName, String secondLastName,
             ClientNameDetailEntity spouseFatherNameDetailEntity, ClientDetailEntity clientDetailEntity,
@@ -149,18 +151,12 @@ public class ClientBO extends CustomerBO {
             client.addOfferingAssociatedInCreate(clientInitialSavingsOfferingEntity);
         }
 
-        List<CustomerCustomFieldEntity> populatedWithCustomerReference = CustomerCustomFieldEntity
-                .fromCustomerCustomFieldEntity(customerCustomFields, client);
-        for (CustomerCustomFieldEntity customerCustomFieldEntity : populatedWithCustomerReference) {
-            client.addCustomField(customerCustomFieldEntity);
-        }
-
         return client;
     }
 
     public static ClientBO createNewOutOfGroupHierarchy(UserContext userContext, String clientName,
             CustomerStatus clientStatus, DateTime mfiJoiningDate, OfficeBO office, PersonnelBO loanOfficer,
-            MeetingBO meeting, PersonnelBO formedBy, List<CustomerCustomFieldEntity> customerCustomFields,
+            MeetingBO meeting, PersonnelBO formedBy,
             ClientNameDetailEntity clientNameDetailEntity, DateTime dob, String governmentId, boolean trainedBool,
             DateTime trainedDateTime, Short groupFlagValue, String clientFirstName, String clientLastName,
             String secondLastName, ClientNameDetailEntity spouseFatherNameDetailEntity,
@@ -184,12 +180,6 @@ public class ClientBO extends CustomerBO {
 
         for (ClientInitialSavingsOfferingEntity clientInitialSavingsOfferingEntity : associatedOfferings) {
             client.addOfferingAssociatedInCreate(clientInitialSavingsOfferingEntity);
-        }
-
-        List<CustomerCustomFieldEntity> populatedWithCustomerReference = CustomerCustomFieldEntity
-                .fromCustomerCustomFieldEntity(customerCustomFields, client);
-        for (CustomerCustomFieldEntity customerCustomFieldEntity : populatedWithCustomerReference) {
-            client.addCustomField(customerCustomFieldEntity);
         }
 
         return client;
@@ -317,6 +307,7 @@ public class ClientBO extends CustomerBO {
         this.firstName = clientNameDetailDto.getFirstName();
         this.lastName = clientNameDetailDto.getLastName();
         this.secondLastName = clientNameDetailDto.getSecondLastName();
+        clientNameDetailDto.setNames(ClientRules.getNameSequence());
 
         this.addNameDetailSet(new ClientNameDetailEntity(this, null, clientNameDetailDto));
         if (spouseNameDetailView != null) {
@@ -543,12 +534,25 @@ public class ClientBO extends CustomerBO {
 
         if (personalInfo.getSpouseFather() != null) {
             // can be null when family details configuration is turned on
-            this.getSpouseName().updateNameDetails(personalInfo.getSpouseFather());
+            if (this.getSpouseName() != null) {
+                this.getSpouseName().updateNameDetails(personalInfo.getSpouseFather());
+            } else {
+                ClientNameDetailEntity spouseFatherNameDetailEntity = new ClientNameDetailEntity(this, personalInfo.getSpouseFather().getSecondLastName(), personalInfo.getSpouseFather());
+                addNameDetailSet(spouseFatherNameDetailEntity);
+            }
         }
         this.updateClientDetails(personalInfo.getClientDetail());
 
         setDisplayName(personalInfo.getClientDisplayName());
-        updateAddress(personalInfo.getAddress());
+        Address address = null;
+        if (personalInfo.getAddress() != null) {
+            ;
+        } {
+            address = new Address(personalInfo.getAddress().getLine1(), personalInfo.getAddress().getLine2(), personalInfo.getAddress().getLine3(),
+                    personalInfo.getAddress().getCity(), personalInfo.getAddress().getState(), personalInfo.getAddress().getCountry(),
+                    personalInfo.getAddress().getZip(), personalInfo.getAddress().getPhoneNumber());
+            updateAddress(address);
+        }
     }
 
     /**
@@ -724,8 +728,6 @@ public class ClientBO extends CustomerBO {
 
         makeCustomerMovementEntries(officeToTransfer);
         this.setPersonnel(null);
-        generateSearchId();
-        super.update();
         logger.debug("In ClientBO::transferToBranch(), successfully transfered, customerId :" + getCustomerId());
     }
 

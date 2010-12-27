@@ -27,17 +27,16 @@ import org.joda.time.DateTime;
 import org.mifos.application.meeting.business.MeetingBO;
 import org.mifos.application.util.helpers.YesNoFlag;
 import org.mifos.customers.business.CustomerBO;
-import org.mifos.customers.business.CustomerCustomFieldEntity;
 import org.mifos.customers.center.business.CenterBO;
 import org.mifos.customers.client.business.ClientBO;
 import org.mifos.customers.client.business.ClientDetailEntity;
-import org.mifos.customers.client.business.ClientPersonalDetailDto;
 import org.mifos.customers.client.business.ClientInitialSavingsOfferingEntity;
 import org.mifos.customers.client.business.ClientNameDetailEntity;
-import org.mifos.customers.client.business.ClientNameDetailDto;
 import org.mifos.customers.office.business.OfficeBO;
 import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.util.helpers.CustomerStatus;
+import org.mifos.dto.screen.ClientNameDetailDto;
+import org.mifos.dto.screen.ClientPersonalDetailDto;
 import org.mifos.framework.business.util.Address;
 import org.mifos.security.util.UserContext;
 
@@ -58,7 +57,6 @@ public class ClientBuilder {
     private UserContext userContext;
     private DateTime mfiJoiningDate = new DateTime();
     private PersonnelBO formedBy;
-    private List<CustomerCustomFieldEntity> customerCustomFields = new ArrayList<CustomerCustomFieldEntity>();
 
     private DateTime dateOfBirth = new DateTime();
     private String governmentId;
@@ -86,7 +84,7 @@ public class ClientBuilder {
         }
 
         final ClientBO client = ClientBO.createNewInGroupHierarchy(userContext, name, customerStatus, mfiJoiningDate,
-                parentCustomer, formedBy, customerCustomFields, clientNameDetailEntity, dateOfBirth, governmentId,
+                parentCustomer, formedBy, clientNameDetailEntity, dateOfBirth, governmentId,
                 trained, trainedDate, groupFlag, clientFirstName, clientLastName, secondLastName,
                 spouseFatherNameDetailEntity, clientDetailEntity, pictureAsBlob, associatedOfferings, externalId, address);
         client.setMeeting(this.meeting);
@@ -103,6 +101,7 @@ public class ClientBuilder {
         this.clientDetailEntity.updateClientDetails(clientPersonalDetailDto);
 
         ClientNameDetailDto clientNameDetailDto = new ClientNameDetailDto();
+        clientNameDetailDto.setNames("first_name,middle_name,last_name,second_last_name".split(","));
         this.clientNameDetailEntity = new ClientNameDetailEntity(null, null, clientNameDetailDto);
 
         if (parentCustomer == null) {
@@ -111,7 +110,7 @@ public class ClientBuilder {
         }
 
         final ClientBO client = ClientBO.createNewInGroupHierarchy(userContext, name, customerStatus, mfiJoiningDate,
-                parentCustomer, formedBy, customerCustomFields, clientNameDetailEntity, dateOfBirth, governmentId,
+                parentCustomer, formedBy, clientNameDetailEntity, dateOfBirth, governmentId,
                 trained, trainedDate, groupFlag, clientFirstName, clientLastName, secondLastName,
                 spouseFatherNameDetailEntity, clientDetailEntity, pictureAsBlob, associatedOfferings, externalId, address);
         client.setCustomerActivationDate(activationDate.toDate());

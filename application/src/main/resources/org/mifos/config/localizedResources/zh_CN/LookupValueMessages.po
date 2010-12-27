@@ -1,16 +1,15 @@
-#. extracted from application/src/main/resources/org/mifos/config/localizedResources/LookupValueMessages.properties
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-10-07 12:11+0530\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"POT-Creation-Date: 2010-11-28 11:25+0530\n"
+"PO-Revision-Date: 2010-12-01 14:38+0800\n"
+"Last-Translator: \n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Translate Toolkit 1.5.3\n"
+"X-Generator: Translate Toolkit 1.7.0\n"
 
 #. # Key value pairs in this file are for LOOKUP_VALUE entries
 #. # defined in latest-data.sql.
@@ -155,7 +154,7 @@ msgstr "已关闭－已注销"
 
 #: AccountState-DisbursedToLo
 msgid "Disbursed to LO"
-msgstr "发放给LO"
+msgstr "发放给信贷员"
 
 #: AccountState-PartialApplication
 msgctxt "AccountState-PartialApplication"
@@ -614,6 +613,10 @@ msgstr "从不重新计算"
 msgid "Declining Balance"
 msgstr "余额递减"
 
+#: InterestTypes-DecliningPrincipalBalance
+msgid "Declining Balance-Interest Recalculation"
+msgstr "重新计算余额递减"
+
 #: InterestTypes-DecliningBalance-EqualPrincipalInstallment
 msgid "Declining Balance-Equal Principal Installment"
 msgstr "余额递减－等额本金分期付款"
@@ -836,7 +839,11 @@ msgstr "可以定义自定义栏位"
 
 #: Permissions-CanManageQuestionGroups
 msgid "Can manage question groups"
-msgstr ""
+msgstr "可以管理问题组"
+
+#: Permissions-CanActivateQuestionGroups
+msgid "Can activate question groups"
+msgstr "可以管理问题组"
 
 #: Permissions-CanDefineHiddenMandatoryFields
 msgid "Can define hidden/mandatory fields"
@@ -844,7 +851,7 @@ msgstr "可以定义必填/隐藏栏位"
 
 #: Permissions-CanDefineHoliday
 msgid "Can define holiday"
-msgstr ""
+msgstr "可以定义假日"
 
 #: Permissions-CanDefineLabels
 msgid "Can define labels"
@@ -1004,19 +1011,19 @@ msgstr "可以撤销贷款发放"
 
 #: Permissions-CanRunBatchJobsOnDemand
 msgid "Can run Batch Jobs on demand"
-msgstr ""
+msgstr "可以随时启动批量任务"
 
 #: Permissions-CanShutdownMifos
 msgid "Can open shutdown page"
-msgstr ""
+msgstr "可以打开系统关闭页面"
 
 #: Permissions-CanViewActiveSessions
 msgid "Can view active sessions"
-msgstr ""
+msgstr "可以查看现活动使用者"
 
 #: Permissions-CanStartMifosShutDown
 msgid "Can shut down Mifos"
-msgstr ""
+msgstr "可以关闭Mifos"
 
 #: Permissions-CanUnlockAUser
 msgid "Can unlock a user"
@@ -1024,7 +1031,7 @@ msgstr "可以为用户解锁"
 
 #: Permissions-CanUpdateBatchJobsConfiguration
 msgid "Can update Batch Jobs configuration"
-msgstr ""
+msgstr "可以更改批量任务配置"
 
 #: Permissions-CanUpdateSavingsAccount
 msgid "Can update Savings account"
@@ -1108,7 +1115,7 @@ msgstr "可以查看收集单报表"
 
 #: Permissions-CanViewDailyCashConfirmationReportStaffWise
 msgid "Can view Daily Cash Confirmation Report - Staff Wise"
-msgstr "可以查看每日现金确认报表－Staff Wise"
+msgstr "可以查看每日现金确认报表－员工"
 
 #: Permissions-CanViewDailyCashFlowReportBranch
 msgid "Can view Daily Cash Flow Report - Branch"
@@ -1143,10 +1150,8 @@ msgid "Can view Loan Accounts reports"
 msgstr "可以查看贷款账户报表"
 
 #: Permissions-CanViewLoanProductDistributionActivityWiseSizeWizeProductWiseSequencyWise
-msgid ""
-"Can view Loan Product Distribution - Activity Wise, Size Wize, Product Wise, "
-"Sequency Wise"
-msgstr "可以查看贷款产品分配－Activity Wise, Size Wize, Product Wise, Sequency Wise"
+msgid "Can view Loan Product Distribution - Activity Wise, Size Wize, Product Wise, Sequency Wise"
+msgstr "可以查看贷款产品分配－活动, 大小, 产品, 频率"
 
 #: Permissions-CanViewLoansPendingApprovalReport
 msgid "Can view Loans pending approval report"
@@ -1199,12 +1204,12 @@ msgstr "可以免除罚款"
 #: Permissions-Center
 msgctxt "Permissions-Center"
 msgid "Center"
-msgstr "行政村"
+msgstr "中心"
 
 #: Permissions-Centers
 msgctxt "Permissions-Centers"
 msgid "Centers"
-msgstr "行政村"
+msgstr "中心"
 
 #: Permissions-Centers-CanAddNotesToCenterRecords
 msgid "Can add notes to Center records"
@@ -1682,11 +1687,11 @@ msgstr "非活动"
 
 #: Position-CenterLeader
 msgid "Center Leader"
-msgstr "行政村负责人"
+msgstr "中心负责人"
 
 #: Position-CenterSecretary
 msgid "Center Secretary"
-msgstr "行政村秘书"
+msgstr "中心秘书"
 
 #: Position-GroupLeader
 msgid "Group Leader"
@@ -1780,7 +1785,7 @@ msgstr "下一个工作日"
 
 #: RepaymentRule-RepaymentMoratorium
 msgid "Moratorium"
-msgstr ""
+msgstr "延期偿付"
 
 #: RepaymentRule-SameDay
 msgid "Same Day"
@@ -1907,3 +1912,4 @@ msgstr "适用于现有及未来账户"
 #: feeUpdationType-AppliesToFutureAccounts
 msgid "Applies to future accounts"
 msgstr "适用于未来账户"
+

@@ -78,18 +78,23 @@ public class VariableInstalmentRecalculationTest extends UiTestCaseBase {
         (new MifosPage(selenium)).logout();
     }
 
+    // TODO - this test do not work on systems with other locale than English.
+    // verifyWarningThresholdMessageOnReviewSchedulePage expects:
+    // Installment amount for October 2010 as...
+    // and when system locale is set to pl_PL.utf8, Mifos displays:
+    // Installment amount for Pazdziernik 2010 as...
     @Test(enabled=false)
     @SuppressWarnings("PMD.SignatureDeclareThrowsException")    // one of the dependent methods throws Exception
-    public void verifyCashFlowRecalculation() throws Exception {
+    public void verifyCashFlowRecalculationAndWarnings() throws Exception {
         int noOfInstallments = 3;
         int loanAmount = 1000;
         int interestRate = 20;
         DefineNewLoanProductPage.SubmitFormParameters formParameters = defineLoanProductParameters(noOfInstallments, loanAmount, interestRate);
         applicationDatabaseOperation.updateLSIM(1);
 
-        int maxGap = 10;
+        int maxGap = 90;
         int minGap = 1;
-        int minInstalmentAmount = 100;
+        int minInstalmentAmount = 0;
         int cashFlowIncremental = 1;
         double warningThreshold = 10.0;
 
@@ -97,15 +102,19 @@ public class VariableInstalmentRecalculationTest extends UiTestCaseBase {
 
         createLoanProduct(maxGap, minGap, minInstalmentAmount, formParameters, warningThreshold);
         createNewLoanAccountAndNavigateToRepaymentSchedule(disbursalDate).
-                enterValidData(cashFlowIncremental, 100).
+                enterValidData("100", cashFlowIncremental, 100, null, null).
                 clickContinue().
                 verifyCashFlowDefaultValues().
-                verifyRecalculationOfCashFlow().
-                verifyWarningThresholdMessageOnReviewSchedulePage(warningThreshold).
-                verifyErrorMessageOnInstallmentDatesOutOfCashFlowCaptured();
+                verifyInstallmentDatesOutOfCashFlowCapturedOnValidate().
+                verifyRecalculationOfCashFlowOnValidate().
+                verifyWarningThresholdMessageOnValidate(warningThreshold).
+                verifyInstallmentDatesOutOfCashFlowCapturedOnPreview().
+                verifyRecalculationOfCashFlowOnPreview().
+                verifyWarningThresholdMessageOnPreview(warningThreshold);
     }
 
     @SuppressWarnings("PMD.SignatureDeclareThrowsException")    // one of the dependent methods throws Exception
+    @Test(enabled=true)
     public void verifyPrincipalAndInterestRecalculation() throws Exception {
         int noOfInstallments = 4;
         int loanAmount = 1000;
@@ -124,12 +133,10 @@ public class VariableInstalmentRecalculationTest extends UiTestCaseBase {
 
         createLoanProduct(maxGap, minGap, minInstalmentAmount, formParameters, warningThreshold);
         createNewLoanAccountAndNavigateToRepaymentSchedule(disbursalDate).
-                enterValidData(cashFlowIncremental, cashFlowBase).
+                enterValidData("100", cashFlowIncremental, cashFlowBase, null, null).
                 clickContinue().
                 verifyRecalculationWhenDateAndTotalChange();
     }
-
-
 
     private DefineNewLoanProductPage.SubmitFormParameters defineLoanProductParameters(int defInstallments, int defaultLoanAmount, int defaultInterestRate) {
         DefineNewLoanProductPage.SubmitFormParameters formParameters = FormParametersHelper.getWeeklyLoanProductParameters();
@@ -145,7 +152,7 @@ public class VariableInstalmentRecalculationTest extends UiTestCaseBase {
         loanProductTestHelper.
                 navigateToDefineNewLoanPangAndFillMandatoryFields(formParameters).
                 fillVariableInstalmentOption(String.valueOf(maxGap),String.valueOf(minGap), String.valueOf(minInstalmentAmount)).
-                fillCashFlow(String.valueOf(cashFlowIncremental)).
+                fillCashFlow(String.valueOf(cashFlowIncremental), "", "").
                 submitAndGotoNewLoanProductPreviewPage().
                 submit();
     }

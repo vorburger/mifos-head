@@ -19,7 +19,7 @@
     <properties>
         <modules.root.dir>${basedir}/..</modules.root.dir>
         <jdk.version>1.6</jdk.version>
-        <current.release.name>mifos-v1.8.x-beta</current.release.name>
+        <current.release.name>mifos-f-${env.BUILD_TAG}</current.release.name>
         <test.database.properties.file>${basedir}/src/test/resources/org/mifos/config/resources/integrationDatabase.properties</test.database.properties.file>
         <main.database.properties.file>${basedir}/src/main/resources/org/mifos/config/resources/mainDatabase.properties</main.database.properties.file>
         <sql.resources.src.directory>${modules.root.dir}/application/src/main/sql</sql.resources.src.directory>
@@ -256,6 +256,14 @@
         <dependency>
             <groupId>org.mifos</groupId>
             <artifactId>mifos-cashflow</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mifos</groupId>
+            <artifactId>mifos-savings</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mifos</groupId>
+            <artifactId>mifos-configuration</artifactId>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -1074,6 +1082,7 @@
                                 if (env['OS'] =~ /^Windows/)
                                     gitcmd = "cmd /c ${gitcmd}"
                                 def gitShaProc = """${gitcmd} log --pretty=format:%H -n1""".execute()
+                                gitShaProc.waitFor()
                                 project.properties['this.commit.id'] = gitShaProc.in.text
                                 project.properties['ci.build.tag'] = env['BUILD_TAG'] ?: 'DEVELOPMENT'
                                 project.properties['ci.build.date'] = "" + new Date()

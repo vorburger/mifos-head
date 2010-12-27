@@ -21,28 +21,36 @@
 package org.mifos.application.servicefacade;
 
 import java.math.BigDecimal;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import org.joda.time.LocalDate;
 import org.mifos.accounts.acceptedpaymenttype.persistence.AcceptedPaymentTypePersistence;
 import org.mifos.accounts.business.AccountActionDateEntity;
 import org.mifos.accounts.business.AccountActionEntity;
-import org.mifos.accounts.business.AccountFlagMapping;
+import org.mifos.accounts.business.AccountCustomFieldEntity;
 import org.mifos.accounts.business.AccountNotesEntity;
 import org.mifos.accounts.business.AccountPaymentEntity;
 import org.mifos.accounts.business.AccountStateEntity;
 import org.mifos.accounts.business.AccountStateMachines;
+import org.mifos.accounts.business.AccountStatusChangeHistoryEntity;
 import org.mifos.accounts.business.AccountTrxnEntity;
 import org.mifos.accounts.business.service.AccountBusinessService;
 import org.mifos.accounts.exceptions.AccountException;
+import org.mifos.accounts.financial.business.FinancialTransactionBO;
 import org.mifos.accounts.productdefinition.business.InterestCalcTypeEntity;
 import org.mifos.accounts.productdefinition.business.SavingsOfferingBO;
 import org.mifos.accounts.productdefinition.persistence.SavingsProductDao;
 import org.mifos.accounts.productdefinition.util.helpers.InterestCalcType;
 import org.mifos.accounts.savings.business.SavingsAccountTypeInspector;
 import org.mifos.accounts.savings.business.SavingsBO;
+import org.mifos.accounts.savings.business.SavingsScheduleEntity;
+import org.mifos.accounts.savings.business.SavingsTrxnDetailEntity;
+import org.mifos.accounts.savings.business.service.SavingsBusinessService;
 import org.mifos.accounts.savings.interest.CalendarPeriod;
 import org.mifos.accounts.savings.interest.CalendarPeriodHelper;
 import org.mifos.accounts.savings.interest.EndOfDayDetail;
@@ -59,14 +67,19 @@ import org.mifos.accounts.savings.interest.schedule.InterestScheduledEvent;
 import org.mifos.accounts.savings.interest.schedule.SavingsInterestScheduledEventFactory;
 import org.mifos.accounts.savings.persistence.SavingsDao;
 import org.mifos.accounts.savings.persistence.SavingsPersistence;
+import org.mifos.accounts.servicefacade.UserContextFactory;
 import org.mifos.accounts.util.helpers.AccountActionTypes;
 import org.mifos.accounts.util.helpers.AccountPaymentData;
 import org.mifos.accounts.util.helpers.AccountState;
 import org.mifos.accounts.util.helpers.PaymentData;
 import org.mifos.accounts.util.helpers.SavingsPaymentData;
+import org.mifos.application.admin.servicefacade.InvalidDateException;
 import org.mifos.application.holiday.persistence.HolidayDao;
+import org.mifos.application.master.business.CustomFieldDefinitionEntity;
+import org.mifos.application.master.business.CustomFieldType;
 import org.mifos.application.master.business.MifosCurrency;
 import org.mifos.application.master.business.PaymentTypeEntity;
+import org.mifos.application.util.helpers.EntityType;
 import org.mifos.application.util.helpers.TrxnTypes;
 import org.mifos.calendar.CalendarEvent;
 import org.mifos.config.AccountingRules;
@@ -78,26 +91,40 @@ import org.mifos.customers.persistence.CustomerDao;
 import org.mifos.customers.persistence.CustomerPersistence;
 import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.personnel.persistence.PersonnelDao;
+import org.mifos.dto.domain.AccountStatusDto;
+import org.mifos.dto.domain.AccountUpdateStatus;
+import org.mifos.dto.domain.AuditLogDto;
+import org.mifos.dto.domain.CreateAccountNote;
+import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.DueOnDateDto;
+import org.mifos.dto.domain.NoteSearchDto;
 import org.mifos.dto.domain.PrdOfferingDto;
 import org.mifos.dto.domain.SavingsAccountClosureDto;
 import org.mifos.dto.domain.SavingsAccountCreationDto;
-import org.mifos.dto.domain.SavingsAccountStatusDto;
-import org.mifos.dto.domain.SavingsAccountUpdateStatus;
+import org.mifos.dto.domain.SavingsAccountDetailDto;
 import org.mifos.dto.domain.SavingsAdjustmentDto;
 import org.mifos.dto.domain.SavingsDepositDto;
+import org.mifos.dto.domain.SavingsStatusChangeHistoryDto;
 import org.mifos.dto.domain.SavingsWithdrawalDto;
 import org.mifos.dto.screen.DepositWithdrawalReferenceDto;
 import org.mifos.dto.screen.ListElement;
+import org.mifos.dto.screen.NotesSearchResultsDto;
 import org.mifos.dto.screen.SavingsAccountDepositDueDto;
 import org.mifos.dto.screen.SavingsAdjustmentReferenceDto;
 import org.mifos.dto.screen.SavingsProductReferenceDto;
+import org.mifos.dto.screen.SavingsRecentActivityDto;
+import org.mifos.dto.screen.SavingsTransactionHistoryDto;
+import org.mifos.framework.components.audit.business.service.AuditBusinessService;
+import org.mifos.framework.components.audit.util.helpers.AuditLogView;
 import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.exceptions.ServiceException;
 import org.mifos.framework.exceptions.StatesInitializationException;
 import org.mifos.framework.hibernate.helper.HibernateTransactionHelper;
 import org.mifos.framework.hibernate.helper.HibernateTransactionHelperForStaticHibernateUtil;
 import org.mifos.framework.util.DateTimeService;
+import org.mifos.framework.util.helpers.DateUtils;
 import org.mifos.framework.util.helpers.Money;
+import org.mifos.framework.util.helpers.MoneyUtils;
 import org.mifos.security.MifosUser;
 import org.mifos.security.util.UserContext;
 import org.mifos.service.BusinessRuleException;
@@ -130,11 +157,7 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     public void deposit(SavingsDepositDto savingsDeposit) {
 
         MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
+        UserContext userContext = toUserContext(user);
 
         SavingsBO savingsAccount = this.savingsDao.findById(savingsDeposit.getSavingsId());
         savingsAccount.updateDetails(userContext);
@@ -180,11 +203,7 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     public void withdraw(SavingsWithdrawalDto savingsWithdrawal) {
 
         MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
+        UserContext userContext = toUserContext(user);
 
         SavingsBO savingsAccount = this.savingsDao.findById(savingsWithdrawal.getSavingsId());
         savingsAccount.updateDetails(userContext);
@@ -228,11 +247,7 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     public void adjustTransaction(SavingsAdjustmentDto savingsAdjustment) {
 
         MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
+        UserContext userContext = toUserContext(user);
 
         PersonnelBO updatedBy = this.personnelDao.findPersonnelById(userContext.getId());
         SavingsBO savingsAccount = this.savingsDao.findById(savingsAdjustment.getSavingsId());
@@ -278,11 +293,7 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     public void postInterestForLastPostingPeriod(LocalDate dateBatchJobIsScheduled) {
 
         MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
+        UserContext userContext = toUserContext(user);
 
         PersonnelBO createdBy = this.personnelDao.findPersonnelById(userContext.getId());
 
@@ -411,16 +422,15 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
         return interestCalculationPeriodCalculator;
     }
 
+    private UserContext toUserContext(MifosUser user) {
+        return new UserContextFactory().create(user);
+    }
+
     @Override
-    public SavingsAccountClosureDto retrieveClosingDetails(Long savingsId, LocalDate closureDate, Short localeId) {
+    public SavingsAccountClosureDto retrieveClosingDetails(Long savingsId, LocalDate closureDate) {
 
         MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
-        userContext.setLocaleId(localeId);
+        UserContext userContext = toUserContext(user);
 
         SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
 
@@ -469,11 +479,7 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     public void closeSavingsAccount(Long savingsId, String notes, SavingsWithdrawalDto closeAccountDto) {
 
         MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
+        UserContext userContext = toUserContext(user);
 
         SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
         savingsAccount.updateDetails(userContext);
@@ -539,15 +545,10 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     }
 
     @Override
-    public DepositWithdrawalReferenceDto retrieveDepositWithdrawalReferenceData(Long savingsId, Integer customerId, Short localeId) {
+    public DepositWithdrawalReferenceDto retrieveDepositWithdrawalReferenceData(Long savingsId, Integer customerId) {
 
         MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
-        userContext.setLocaleId(localeId);
+        UserContext userContext = toUserContext(user);
 
         try {
             SavingsBO savingsAccount = savingsDao.findById(savingsId);
@@ -605,15 +606,7 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     }
 
     @Override
-    public SavingsAdjustmentReferenceDto retrieveAdjustmentReferenceData(Long savingsId, Short localeId) {
-
-        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
-        userContext.setLocaleId(localeId);
+    public SavingsAdjustmentReferenceDto retrieveAdjustmentReferenceData(Long savingsId) {
 
         SavingsBO savings = savingsDao.findById(savingsId);
 
@@ -725,7 +718,11 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     }
 
     @Override
-    public SavingsAccountStatusDto retrieveAccountStatuses(Long savingsId, Short localeId) {
+    public AccountStatusDto retrieveAccountStatuses(Long savingsId) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
         SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
 
         try {
@@ -734,26 +731,22 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
 
             List<AccountStateEntity> statusList = AccountStateMachines.getInstance().getSavingsStatusList(savingsAccount.getAccountState());
             for (AccountStateEntity accountState : statusList) {
-                accountState.setLocaleId(localeId);
+                accountState.setLocaleId(userContext.getLocaleId());
                 savingsStatesList.add(new ListElement(accountState.getId().intValue(), accountState.getName()));
             }
 
-            return new SavingsAccountStatusDto(savingsStatesList);
+            return new AccountStatusDto(savingsStatesList);
         } catch (StatesInitializationException e) {
             throw new MifosRuntimeException(e);
         }
     }
 
     @Override
-    public void updateSavingsAccountStatus(SavingsAccountUpdateStatus updateStatus, Short localeId) {
+    public void updateSavingsAccountStatus(AccountUpdateStatus updateStatus) {
 
         MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        UserContext userContext = new UserContext();
-        userContext.setBranchId(user.getBranchId());
-        userContext.setId(Short.valueOf((short) user.getUserId()));
-        userContext.setName(user.getUsername());
-        userContext.setLocaleId(localeId);
+        UserContext userContext = toUserContext(user);
+        PersonnelBO loggedInUser = this.personnelDao.findPersonnelById(userContext.getId());
 
         SavingsBO savingsAccount = this.savingsDao.findById(updateStatus.getSavingsId());
         savingsAccount.updateDetails(userContext);
@@ -763,7 +756,7 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
             AccountState newStatus = AccountState.fromShort(updateStatus.getNewStatusId());
 
             // FIXME - keithw - refactor savings specific logic out of changeStatus and create savings statue machine wrapper.
-            savingsAccount.changeStatus(newStatus, updateStatus.getFlagId(), updateStatus.getComment());
+            savingsAccount.changeStatus(newStatus, updateStatus.getFlagId(), updateStatus.getComment(), loggedInUser);
             this.savingsDao.save(savingsAccount);
             this.transactionHelper.commitTransaction();
         } catch (BusinessRuleException e) {
@@ -778,27 +771,344 @@ public class SavingsServiceFacadeWebTier implements SavingsServiceFacade {
     }
 
     @Override
-    public SavingsAccountDepositDueDto retrieveDepositDueDetails(String globalAccountNum, Short localeId) {
+    public SavingsAccountDepositDueDto retrieveDepositDueDetails(String globalAccountNum) {
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
         SavingsBO savingsAccount = this.savingsDao.findBySystemId(globalAccountNum);
 
+        List<DueOnDateDto> previousDueDates = new ArrayList<DueOnDateDto>();
+
+        AccountActionDateEntity nextInstallment = savingsAccount.getDetailsOfNextInstallment();
+        LocalDate nextDueDate = new LocalDate();
+        if (nextInstallment != null) {
+            nextDueDate = new LocalDate(nextInstallment.getActionDate());
+        }
+
+        Money totalDue = Money.zero(savingsAccount.getCurrency());
         List<AccountActionDateEntity> scheduledDeposits = savingsAccount.getAccountActionDatesSortedByInstallmentId();
         for (AccountActionDateEntity scheduledDeposit : scheduledDeposits) {
-//            AccountDepositDto depositDto = scheduledDeposit.toDto();
+            if (!scheduledDeposit.isPaid() && scheduledDeposit.isBeforeOrOn(nextDueDate)) {
+                SavingsScheduleEntity savingsScheduledDeposit = (SavingsScheduleEntity) scheduledDeposit;
+                totalDue = totalDue.add(savingsScheduledDeposit.getTotalDepositDue());
+                previousDueDates.add(new DueOnDateDto(new LocalDate(scheduledDeposit.getActionDate()), savingsScheduledDeposit.getTotalDepositDue().toString()));
+            }
         }
 
-        List<AccountNotesEntity> savingsAccountNotes = new ArrayList<AccountNotesEntity>(savingsAccount.getAccountNotes());
-        for (AccountNotesEntity accountNotesEntity : savingsAccountNotes) {
-
-        }
-
-        for (AccountFlagMapping accountFlagMapping : savingsAccount.getAccountFlags()) {
-            accountFlagMapping.getFlag().setLocaleId(localeId);
-        }
+        DueOnDateDto nextdueDate = new DueOnDateDto(nextDueDate, MoneyUtils.currencyRound(totalDue).toString());
 
         AccountStateEntity accountStateEntity = savingsAccount.getAccountState();
-        accountStateEntity.setLocaleId(localeId);
+        accountStateEntity.setLocaleId(userContext.getLocaleId());
 
-        LocalDate nextDueDate = new LocalDate();
-        return new SavingsAccountDepositDueDto(nextDueDate);
+        return new SavingsAccountDepositDueDto(nextdueDate, previousDueDates, accountStateEntity.getId(), accountStateEntity.getName());
+    }
+
+    @Override
+    public List<SavingsRecentActivityDto> retrieveRecentSavingsActivities(Long savingsId) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
+        savingsAccount.updateDetails(userContext);
+
+        return savingsAccount.getRecentAccountActivity(null);
+    }
+
+    @Override
+    public List<SavingsTransactionHistoryDto> retrieveTransactionHistory(String globalAccountNum) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        SavingsBO savingsAccount = this.savingsDao.findBySystemId(globalAccountNum);
+        savingsAccount.updateDetails(userContext);
+
+        List<SavingsTransactionHistoryDto> savingsTransactionHistoryViewList = new ArrayList<SavingsTransactionHistoryDto>();
+        // Check for order-by clause in AccountBO.hbm.xml,
+        // AccountPayment.hbm.xml and AccountTrxnEntity.hbm.xml for
+        // accountPaymentSet ,
+        // accountTrxnSet and financialBoSet. They all should be set for their
+        // primay key column desc in both. If stated is not there, the code
+        // below will behave abnormally.
+        List<AccountPaymentEntity> accountPaymentSet = savingsAccount.getAccountPayments();
+        for (AccountPaymentEntity accountPaymentEntity : accountPaymentSet) {
+            Set<AccountTrxnEntity> accountTrxnEntitySet = accountPaymentEntity.getAccountTrxns();
+            for (AccountTrxnEntity accountTrxnEntity : accountTrxnEntitySet) {
+                Set<FinancialTransactionBO> financialTransactionBOSet = accountTrxnEntity.getFinancialTransactions();
+                for (FinancialTransactionBO financialTransactionBO : financialTransactionBOSet) {
+                    SavingsTransactionHistoryDto savingsTransactionHistoryDto = new SavingsTransactionHistoryDto();
+
+                    savingsTransactionHistoryDto.setTransactionDate(financialTransactionBO.getActionDate());
+                    String preferredTransactionDate = DateUtils.getUserLocaleDate(userContext.getPreferredLocale(), financialTransactionBO.getActionDate().toString());
+                    savingsTransactionHistoryDto.setUserPrefferedTransactionDate(preferredTransactionDate);
+
+                    savingsTransactionHistoryDto.setPaymentId(accountTrxnEntity.getAccountPayment().getPaymentId());
+                    savingsTransactionHistoryDto.setAccountTrxnId(accountTrxnEntity.getAccountTrxnId());
+                    savingsTransactionHistoryDto.setType(financialTransactionBO.getFinancialAction().getName());
+                    savingsTransactionHistoryDto.setGlcode(financialTransactionBO.getGlcode().getGlcode());
+                    if (financialTransactionBO.isDebitEntry()) {
+                        savingsTransactionHistoryDto.setDebit(String.valueOf(removeSign(financialTransactionBO.getPostedAmount())));
+                    } else if (financialTransactionBO.isCreditEntry()) {
+                        savingsTransactionHistoryDto.setCredit(String.valueOf(removeSign(financialTransactionBO.getPostedAmount())));
+                    }
+                    savingsTransactionHistoryDto.setBalance(String.valueOf(removeSign(((SavingsTrxnDetailEntity) accountTrxnEntity).getBalance())));
+                    savingsTransactionHistoryDto.setClientName(accountTrxnEntity.getCustomer().getDisplayName());
+                    savingsTransactionHistoryDto.setPostedDate(financialTransactionBO.getPostedDate());
+                    String preferredDate = DateUtils.getUserLocaleDate(userContext.getPreferredLocale(), financialTransactionBO.getPostedDate().toString());
+                    savingsTransactionHistoryDto.setUserPrefferedPostedDate(preferredDate);
+                    if (accountTrxnEntity.getPersonnel() != null) {
+                        savingsTransactionHistoryDto.setPostedBy(accountTrxnEntity.getPersonnel().getDisplayName());
+                    }
+                    if (financialTransactionBO.getNotes() != null && !financialTransactionBO.getNotes().equals("")) {
+                        savingsTransactionHistoryDto.setNotes(financialTransactionBO.getNotes());
+                    }
+                    savingsTransactionHistoryViewList.add(savingsTransactionHistoryDto);
+                }
+            }
+        }
+
+        return savingsTransactionHistoryViewList;
+    }
+
+    private String removeSign(Money amount) {
+        if (amount.isLessThanZero()) {
+            return amount.negate().toString();
+        }
+
+        return amount.toString();
+    }
+
+    @Override
+    public List<SavingsStatusChangeHistoryDto> retrieveStatusChangeHistory(String globalAccountNum) {
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        SavingsBO savingsAccount = this.savingsDao.findBySystemId(globalAccountNum);
+        savingsAccount.updateDetails(userContext);
+
+        List<SavingsStatusChangeHistoryDto> dtoList = new ArrayList<SavingsStatusChangeHistoryDto>();
+
+        List<AccountStatusChangeHistoryEntity> statusChangeHistory = savingsAccount.getAccountStatusChangeHistory();
+        for (AccountStatusChangeHistoryEntity accountStatusChangeHistory : statusChangeHistory) {
+            dtoList.add(accountStatusChangeHistory.toDto());
+        }
+        return dtoList;
+    }
+
+    @Override
+    public List<CustomFieldDto> retrieveCustomFieldsForEdit(String globalAccountNum) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        SavingsBO savingsAccount = this.savingsDao.findBySystemId(globalAccountNum);
+        savingsAccount.updateDetails(userContext);
+
+        try {
+            List<AccountCustomFieldEntity> customFieldEntities = new ArrayList<AccountCustomFieldEntity>(savingsAccount.getAccountCustomFields());
+            List<CustomFieldDefinitionEntity> customFieldDefinitions = new SavingsBusinessService().retrieveCustomFieldsDefinition();
+
+            List<CustomFieldDto> customFields = new ArrayList<CustomFieldDto>();
+
+            for (CustomFieldDefinitionEntity customFieldDef : customFieldDefinitions) {
+                boolean customFieldPresent = false;
+                for (AccountCustomFieldEntity customFieldEntity : customFieldEntities) {
+                    customFieldPresent = true;
+                    if (customFieldDef.getFieldId().equals(customFieldEntity.getFieldId())) {
+                        if (customFieldDef.getFieldType().equals(CustomFieldType.DATE.getValue())) {
+                            String locale = DateUtils.getUserLocaleDate(userContext.getPreferredLocale(), customFieldEntity.getFieldValue());
+                            customFields.add(new CustomFieldDto(customFieldEntity.getFieldId(), locale, customFieldDef.getFieldType()));
+                        } else {
+                            customFields.add(new CustomFieldDto(customFieldEntity.getFieldId(), customFieldEntity
+                                    .getFieldValue(), customFieldDef.getFieldType()));
+                        }
+                    }
+                }
+                if (!customFieldPresent) {
+                    customFields.add(new CustomFieldDto(customFieldDef.getFieldId(), customFieldDef.getDefaultValue(), customFieldDef.getFieldType()));
+                }
+            }
+
+            return customFields;
+        } catch (ServiceException e) {
+            throw new MifosRuntimeException(e);
+        }
+    }
+
+    @Override
+    public void updateSavingsAccountDetails(Long savingsId, String recommendedOrMandatoryAmount, List<CustomFieldDto> customFields) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
+        savingsAccount.updateDetails(userContext);
+
+        Set<AccountCustomFieldEntity> accountCustomFields = savingsAccount.getAccountCustomFields();
+        for (CustomFieldDto view : customFields) {
+            boolean fieldPresent = false;
+            if (CustomFieldType.DATE.getValue().equals(view.getFieldType())
+                    && org.apache.commons.lang.StringUtils.isNotBlank(view.getFieldValue())) {
+                try {
+                    SimpleDateFormat format = (SimpleDateFormat) DateFormat.getDateInstance(DateFormat.SHORT,
+                            userContext.getPreferredLocale());
+                    String userfmt = DateUtils.convertToCurrentDateFormat(format.toPattern());
+                    view.setFieldValue(DateUtils.convertUserToDbFmt(view.getFieldValue(), userfmt));
+                } catch (InvalidDateException e) {
+                    throw new BusinessRuleException(e.getMessage(), e);
+                }
+            }
+            for (AccountCustomFieldEntity customFieldEntity : accountCustomFields) {
+                if (customFieldEntity.getFieldId().equals(view.getFieldId())) {
+                    fieldPresent = true;
+                    customFieldEntity.setFieldValue(view.getFieldValue());
+                }
+            }
+            if (!fieldPresent) {
+                accountCustomFields.add(new AccountCustomFieldEntity(savingsAccount, view.getFieldId(), view
+                        .getFieldValue()));
+            }
+        }
+
+        Money amount = new Money(savingsAccount.getCurrency(), recommendedOrMandatoryAmount);
+
+        try {
+            this.transactionHelper.startTransaction();
+            this.transactionHelper.beginAuditLoggingFor(savingsAccount);
+
+            savingsAccount.update(amount, accountCustomFields);
+
+            this.savingsDao.save(savingsAccount);
+            this.transactionHelper.commitTransaction();
+        } catch (BusinessRuleException e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new BusinessRuleException(e.getMessageKey(), e);
+        } catch (Exception e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new MifosRuntimeException(e);
+        } finally {
+            this.transactionHelper.closeSession();
+        }
+    }
+
+    @Override
+    public SavingsAccountDetailDto retrieveSavingsAccountDetails(Long savingsId) {
+        SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
+        return savingsAccount.toDto();
+    }
+
+    @Override
+    public void waiveNextDepositAmountDue(Long savingsId) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
+        savingsAccount.updateDetails(userContext);
+
+        PersonnelBO loggedInUser = this.personnelDao.findPersonnelById(userContext.getId());
+        try {
+            this.transactionHelper.startTransaction();
+
+            savingsAccount.waiveNextDepositAmountDue(loggedInUser);
+
+            this.savingsDao.save(savingsAccount);
+            this.transactionHelper.commitTransaction();
+        } catch (BusinessRuleException e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new BusinessRuleException(e.getMessageKey(), e);
+        } catch (Exception e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new MifosRuntimeException(e);
+        } finally {
+            this.transactionHelper.closeSession();
+        }
+    }
+
+    @Override
+    public void waiveDepositAmountOverDue(Long savingsId) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
+        savingsAccount.updateDetails(userContext);
+
+        PersonnelBO loggedInUser = this.personnelDao.findPersonnelById(userContext.getId());
+        try {
+            this.transactionHelper.startTransaction();
+
+            savingsAccount.waiveAmountOverDue(loggedInUser);
+
+            this.savingsDao.save(savingsAccount);
+            this.transactionHelper.commitTransaction();
+        } catch (BusinessRuleException e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new BusinessRuleException(e.getMessageKey(), e);
+        } catch (Exception e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new MifosRuntimeException(e);
+        } finally {
+            this.transactionHelper.closeSession();
+        }
+    }
+
+    @Override
+    public List<AuditLogDto> retrieveSavingsAccountAuditLogs(Long savingsId) {
+        List<AuditLogDto> auditLogDtos = new ArrayList<AuditLogDto>();
+        AuditBusinessService auditBusinessService = new AuditBusinessService();
+        try {
+            List<AuditLogView> auditLogs = auditBusinessService.getAuditLogRecords(EntityType.SAVINGS.getValue(), savingsId.intValue());
+            for (AuditLogView auditLogView : auditLogs) {
+                auditLogDtos.add(auditLogView.toDto());
+            }
+            return auditLogDtos;
+        } catch (ServiceException e) {
+            throw new MifosRuntimeException(e);
+        }
+    }
+
+    @Override
+    public NotesSearchResultsDto retrievePagedNotesDto(NoteSearchDto noteSearch) {
+        return this.savingsDao.searchNotes(noteSearch);
+    }
+
+    @Override
+    public SavingsAccountDetailDto retrieveSavingsAccountNotes(Long savingsId) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        SavingsBO savingsAccount = this.savingsDao.findById(savingsId);
+        savingsAccount.updateDetails(userContext);
+        return savingsAccount.toDto();
+    }
+
+    @Override
+    public void addNote(CreateAccountNote accountNote) {
+
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = toUserContext(user);
+
+        PersonnelBO createdBy = this.personnelDao.findPersonnelById(accountNote.getCreatedById().shortValue());
+        SavingsBO savingsAccount = this.savingsDao.findById(accountNote.getAccountId().longValue());
+
+        AccountNotesEntity accountNotes = new AccountNotesEntity(new java.sql.Date(accountNote.getCommentDate().toDateMidnight().toDate().getTime()),
+                accountNote.getComment(), createdBy, savingsAccount);
+
+        try {
+            this.transactionHelper.startTransaction();
+
+            savingsAccount.updateDetails(userContext);
+            savingsAccount.addAccountNotes(accountNotes);
+            this.savingsDao.save(savingsAccount);
+            this.transactionHelper.commitTransaction();
+        } catch (Exception e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new MifosRuntimeException(e);
+        } finally {
+            this.transactionHelper.closeSession();
+        }
     }
 }

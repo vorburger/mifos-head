@@ -20,21 +20,21 @@
 package org.mifos.customers.office.business.service;
 
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.commons.lang.StringUtils;
+import org.mifos.accounts.servicefacade.UserContextFactory;
 import org.mifos.application.admin.servicefacade.OfficeServiceFacade;
 import org.mifos.application.holiday.persistence.HolidayDao;
-import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.application.master.MessageLookup;
+import org.mifos.application.master.business.CustomFieldDefinitionEntity;
 import org.mifos.core.MifosRuntimeException;
 import org.mifos.customers.office.business.OfficeBO;
 import org.mifos.customers.office.exceptions.OfficeException;
 import org.mifos.customers.office.exceptions.OfficeValidationException;
 import org.mifos.customers.office.persistence.OfficeDao;
-import org.mifos.customers.office.struts.OfficeUpdateRequest;
+import org.mifos.customers.office.persistence.OfficePersistence;
 import org.mifos.customers.office.util.helpers.OfficeConstants;
 import org.mifos.customers.office.util.helpers.OfficeLevel;
 import org.mifos.customers.office.util.helpers.OfficeStatus;
@@ -44,7 +44,9 @@ import org.mifos.dto.domain.CustomFieldDto;
 import org.mifos.dto.domain.OfficeDetailsDto;
 import org.mifos.dto.domain.OfficeDto;
 import org.mifos.dto.domain.OfficeHierarchyDto;
+import org.mifos.dto.domain.OfficeUpdateRequest;
 import org.mifos.dto.screen.ListElement;
+import org.mifos.dto.screen.OfficeDetailsForEdit;
 import org.mifos.dto.screen.OfficeFormDto;
 import org.mifos.dto.screen.OfficeHierarchyByLevelDto;
 import org.mifos.dto.screen.OnlyBranchOfficeHierarchyDto;
@@ -57,7 +59,7 @@ import org.mifos.security.util.UserContext;
 import org.mifos.service.BusinessRuleException;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-public class OfficeServiceFacadeWebTier implements LegacyOfficeServiceFacade, OfficeServiceFacade {
+public class OfficeServiceFacadeWebTier implements OfficeServiceFacade {
 
     private final OfficeDao officeDao;
     private final HolidayDao holidayDao;
@@ -73,71 +75,60 @@ public class OfficeServiceFacadeWebTier implements LegacyOfficeServiceFacade, Of
     }
 
     @Override
-    public String topLevelOfficeNames(String ids) {
-        String[] idArray = ids.split(",");
-        List<Short> idList = new LinkedList<Short>();
-        for (String id : idArray) {
-            idList.add(new Short(id));
-        }
-        List<String> topLevelOffices = officeDao.topLevelOfficeNames(idList);
-        StringBuffer stringBuffer = new StringBuffer();
-        for (Iterator<String> iterator = topLevelOffices.iterator(); iterator.hasNext();) {
-            stringBuffer.append(iterator.next());
-            if (iterator.hasNext()) {
-                stringBuffer.append(", ");
-            }
-        }
-        return stringBuffer.toString();
-    }
+    public boolean updateOffice(Short officeId, Integer versionNum, OfficeUpdateRequest officeUpdateRequest) {
 
-    @Override
-    public boolean updateOffice(UserContext userContext, Short officeId, Integer versionNum, OfficeUpdateRequest officeUpdateRequest) throws ApplicationException {
-
-        boolean isParentOfficeChanged = false;
-
-        OfficeBO office = officeDao.findOfficeById(officeId);
-        office.validateVersion(versionNum);
-
-        OfficeBO parentOffice = null;
-        if (officeUpdateRequest.getParentOfficeId() != null) {
-
-            parentOffice = officeDao.findOfficeById(officeUpdateRequest.getParentOfficeId());
-
-            if (office.isDifferentParentOffice(parentOffice)) {
-                holidayDao.validateNoExtraFutureHolidaysApplicableOnParentOffice(office.getParentOffice().getOfficeId(), officeUpdateRequest.getParentOfficeId());
-            }
-        }
-
-        if (office.isNameDifferent(officeUpdateRequest.getOfficeName())) {
-            officeDao.validateOfficeNameIsNotTaken(officeUpdateRequest.getOfficeName());
-        }
-
-        if (office.isShortNameDifferent(officeUpdateRequest.getShortName())) {
-            officeDao.validateOfficeShortNameIsNotTaken(officeUpdateRequest.getShortName());
-        }
-
-        if (!office.isStatusDifferent(officeUpdateRequest.getNewStatus())) {
-
-            if (OfficeStatus.INACTIVE.equals(officeUpdateRequest.getNewStatus())) {
-                officeDao.validateNoActiveChildrenExist(office.getOfficeId());
-                officeDao.validateNoActivePeronnelExist(office.getOfficeId());
-            }
-
-            if (parentOffice != null) {
-                if (parentOffice.isInActive()) {
-                    throw new OfficeException(OfficeConstants.KEYPARENTNOTACTIVE);
-                }
-            }
-        }
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = new UserContextFactory().create(user);
 
         try {
+            boolean isParentOfficeChanged = false;
+
+            OfficeBO office = officeDao.findOfficeById(officeId);
+            office.validateVersion(versionNum);
+
+            OfficeBO parentOffice = null;
+            if (officeUpdateRequest.getParentOfficeId() != null) {
+
+                parentOffice = officeDao.findOfficeById(officeUpdateRequest.getParentOfficeId());
+
+                if (office.isDifferentParentOffice(parentOffice)) {
+                    holidayDao.validateNoExtraFutureHolidaysApplicableOnParentOffice(office.getParentOffice()
+                            .getOfficeId(), officeUpdateRequest.getParentOfficeId());
+                }
+            }
+
+            if (office.isNameDifferent(officeUpdateRequest.getOfficeName())) {
+                officeDao.validateOfficeNameIsNotTaken(officeUpdateRequest.getOfficeName());
+            }
+
+            if (office.isShortNameDifferent(officeUpdateRequest.getShortName())) {
+                officeDao.validateOfficeShortNameIsNotTaken(officeUpdateRequest.getShortName());
+            }
+
+            OfficeStatus newStatus = OfficeStatus.getOfficeStatus(officeUpdateRequest.getNewStatus());
+            if (!office.isStatusDifferent(newStatus)) {
+
+                if (OfficeStatus.INACTIVE.equals(officeUpdateRequest.getNewStatus())) {
+                    officeDao.validateNoActiveChildrenExist(office.getOfficeId());
+                    officeDao.validateNoActivePeronnelExist(office.getOfficeId());
+                }
+
+                if (parentOffice != null) {
+                    if (parentOffice.isInActive()) {
+                        throw new OfficeException(OfficeConstants.KEYPARENTNOTACTIVE);
+                    }
+                }
+            }
+
             StaticHibernateUtil.startTransaction();
             office.update(userContext, officeUpdateRequest, parentOffice);
             StaticHibernateUtil.commitTransaction();
             return isParentOfficeChanged;
+        } catch (OfficeException e1) {
+            throw new BusinessRuleException(e1.getKey(), e1);
         } catch (ApplicationException e) {
             StaticHibernateUtil.rollbackTransaction();
-            throw new ApplicationException(e.getKey(), e);
+            throw new BusinessRuleException(e.getKey(), e);
         } catch (Exception e) {
             StaticHibernateUtil.rollbackTransaction();
             throw new MifosRuntimeException(e.getMessage(), e);
@@ -215,22 +206,31 @@ public class OfficeServiceFacadeWebTier implements LegacyOfficeServiceFacade, Of
     @Override
     public OfficeFormDto retrieveOfficeFormInformation(Short officeLevelId) {
 
-        List<CustomFieldDefinitionEntity> customFieldDefinitions = this.officeDao.retrieveCustomFieldsForOffice();
-        List<CustomFieldDto> customFields = CustomFieldDefinitionEntity.toDto(customFieldDefinitions, Locale.getDefault());
+        try {
+            List<CustomFieldDto> customFields = new ArrayList<CustomFieldDto>();
 
-        OfficeLevel officeLevel = OfficeLevel.HEADOFFICE;
-        if (officeLevelId != null) {
-            officeLevel = OfficeLevel.getOfficeLevel(officeLevelId);
+            OfficeLevel officeLevel = OfficeLevel.HEADOFFICE;
+            if (officeLevelId != null) {
+                officeLevel = OfficeLevel.getOfficeLevel(officeLevelId);
+            }
+
+            List<OfficeDto> parents = this.officeDao.findActiveParents(officeLevel);
+
+            for (OfficeDto office : parents) {
+                String levelName = MessageLookup.getInstance().lookup(office.getLookupNameKey());
+                office.setLevelName(levelName);
+            }
+
+            List<OfficeDetailsDto> officeLevels = new OfficePersistence().getActiveLevels();
+            for (OfficeDetailsDto officeDetailsDto : officeLevels) {
+                String levelName = MessageLookup.getInstance().lookup(officeDetailsDto.getLevelNameKey());
+                officeDetailsDto.setLevelName(levelName);
+            }
+
+            return new OfficeFormDto(customFields, parents, officeLevels);
+        } catch (PersistenceException e) {
+            throw new MifosRuntimeException(e);
         }
-
-        List<OfficeDto> parents = this.officeDao.findActiveParents(officeLevel);
-
-        for (OfficeDto office : parents) {
-            String levelName = MessageLookup.getInstance().lookup(office.getLookupNameKey());
-            office.setLevelName(levelName);
-        }
-
-        return new OfficeFormDto(customFields, parents);
     }
 
     @Override
@@ -263,10 +263,10 @@ public class OfficeServiceFacadeWebTier implements LegacyOfficeServiceFacade, Of
     }
 
     @Override
-    public ListElement createOffice(Short userId, Locale preferredLocale, Short operationMode, OfficeDto officeDto) {
-        UserContext userContext = new UserContext();
-        userContext.setId(userId);
-        userContext.setPreferredLocale(preferredLocale);
+    public ListElement createOffice(Short operationMode, OfficeDto officeDto) {
+        MifosUser user = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = new UserContextFactory().create(user);
+
         OfficeLevel level = OfficeLevel.getOfficeLevel(officeDto.getLevelId());
         OfficeBO parentOffice = officeDao.findOfficeById(officeDto.getParentId());
         AddressDto addressDto = officeDto.getAddress();
@@ -320,5 +320,46 @@ public class OfficeServiceFacadeWebTier implements LegacyOfficeServiceFacade, Of
 
         OfficeDto office = officeDao.findOfficeDtoById(user.getBranchId());
         return officeDao.findNonBranchesOnlyWithParentsMatching(office.getSearchId());
+    }
+
+    @Override
+    public List<OfficeDetailsDto> retrieveActiveParentOffices(Short officeLevelId) {
+        OfficeLevel Level = OfficeLevel.getOfficeLevel(officeLevelId);
+        try {
+            List<OfficeDetailsDto> officeParents = new OfficePersistence().getActiveParents(Level);
+            for (OfficeDetailsDto officeDetailsDto : officeParents) {
+                String levelName = MessageLookup.getInstance().lookup(officeDetailsDto.getLevelNameKey());
+                officeDetailsDto.setLevelName(levelName);
+            }
+            return officeParents;
+        } catch (PersistenceException e) {
+            throw new MifosRuntimeException(e);
+        }
+    }
+
+    @Override
+    public OfficeDetailsForEdit retrieveOfficeDetailsForEdit(String officeLevel) {
+
+        List<OfficeDetailsDto> parents = new ArrayList<OfficeDetailsDto>();
+        if (StringUtils.isNotBlank(officeLevel)) {
+            parents = retrieveActiveParentOffices(Short.valueOf(officeLevel));
+        }
+
+        try {
+            List<OfficeDetailsDto> configuredOfficeLevels = new OfficePersistence().getActiveLevels();
+            for (OfficeDetailsDto officeDetailsDto : configuredOfficeLevels) {
+                String levelName = MessageLookup.getInstance().lookup(officeDetailsDto.getLevelNameKey());
+                officeDetailsDto.setLevelName(levelName);
+            }
+
+            List<OfficeDetailsDto> statusList = new OfficePersistence().getStatusList();
+            for (OfficeDetailsDto officeDetailsDto : statusList) {
+                officeDetailsDto.setLevelName(MessageLookup.getInstance().lookup(officeDetailsDto.getLevelNameKey()));
+            }
+
+            return new OfficeDetailsForEdit(parents, statusList, configuredOfficeLevels);
+        } catch (PersistenceException e) {
+            throw new MifosRuntimeException(e);
+        }
     }
 }

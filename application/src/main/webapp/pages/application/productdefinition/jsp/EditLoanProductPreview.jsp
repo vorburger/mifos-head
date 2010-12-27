@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -586,18 +586,44 @@ explanation of the license and how it is applied.
                         <c:if test="${sessionScope.loanproductactionform.cashFlowValidation}">
                             <tr>
                                 <td height="23" class="fontnormalbold">
-                                    <mifos:mifoslabel name="product.cashFlowWarningThreshold" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                    <mifos:mifoslabel name="product.cashFlowThreshold" bundle="ProductDefUIResources" isColonRequired="yes" />
                                     <span class="fontnormal">
               	                     	<c:choose>
-          	                               <c:when test="${(empty sessionScope.loanproductactionform.cashFlowWarningThreshold) or (sessionScope.loanproductactionform.cashFlowWarningThreshold == 0)}">
+          	                               <c:when test="${(empty sessionScope.loanproductactionform.cashFlowThreshold) or (sessionScope.loanproductactionform.cashFlowThreshold == 0)}">
                                                   <mifos:mifoslabel name="product.notApplicable" bundle="ProductDefUIResources" />
                                               </c:when>
                                               <c:otherwise>
-	                                        <c:out value="${sessionScope.loanproductactionform.cashFlowWarningThreshold}" />
+	                                        <c:out value="${sessionScope.loanproductactionform.cashFlowThreshold}" />
 	                                        <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
                                               </c:otherwise>
                                           </c:choose>
                                     </span>
+                                    <br/>
+                                    <mifos:mifoslabel name="product.indebtednessRatio" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                          <span class="fontnormal">
+                                              <c:choose>
+                                                  <c:when test="${empty sessionScope.loanproductactionform.indebtednessRatio}">
+                                                      <mifos:mifoslabel name="product.notApplicable" bundle="ProductDefUIResources" />
+                                                  </c:when>
+                                                  <c:otherwise>
+                                                      <c:out value="${sessionScope.loanproductactionform.indebtednessRatio}" />
+                                                          <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
+                                                  </c:otherwise>
+                                              </c:choose>
+                                          </span>
+                                      <br/>
+                                      <mifos:mifoslabel name="product.repaymentCapacity" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                          <span class="fontnormal">
+                                              <c:choose>
+                                                  <c:when test="${empty sessionScope.loanproductactionform.repaymentCapacity}">
+                                                      <mifos:mifoslabel name="product.notApplicable" bundle="ProductDefUIResources" />
+                                                  </c:when>
+                                                  <c:otherwise>
+                                                      <c:out value="${sessionScope.loanproductactionform.repaymentCapacity}" />
+                                                          <mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
+                                                  </c:otherwise>
+                                              </c:choose>
+                                          </span>
                                  </td>
                            </tr>
                        </c:if>

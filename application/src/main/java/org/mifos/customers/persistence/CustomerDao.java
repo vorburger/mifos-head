@@ -20,16 +20,18 @@
 
 package org.mifos.customers.persistence;
 
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 import org.joda.time.DateTime;
 import org.mifos.accounts.business.AccountBO;
 import org.mifos.accounts.fees.business.FeeBO;
 import org.mifos.accounts.loan.business.LoanBO;
 import org.mifos.application.master.business.CustomFieldDefinitionEntity;
-import org.mifos.application.master.business.ValueListElement;
 import org.mifos.application.meeting.business.MeetingBO;
+import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.business.CustomerBO;
-import org.mifos.customers.business.CustomerCustomFieldEntity;
-import org.mifos.accounts.api.CustomerDto;
 import org.mifos.customers.business.CustomerFlagDetailEntity;
 import org.mifos.customers.business.CustomerMeetingEntity;
 import org.mifos.customers.business.CustomerPerformanceHistoryDto;
@@ -39,32 +41,29 @@ import org.mifos.customers.client.business.ClientBO;
 import org.mifos.customers.exceptions.CustomerException;
 import org.mifos.customers.group.business.GroupBO;
 import org.mifos.customers.personnel.business.PersonnelBO;
-import org.mifos.customers.personnel.business.PersonnelDto;
 import org.mifos.customers.personnel.business.PersonnelLevelEntity;
-import org.mifos.customers.util.helpers.CenterDisplayDto;
-import org.mifos.customers.util.helpers.CenterPerformanceHistoryDto;
-import org.mifos.customers.util.helpers.ClientDisplayDto;
-import org.mifos.customers.util.helpers.CustomerAccountSummaryDto;
-import org.mifos.customers.util.helpers.CustomerAddressDto;
-import org.mifos.customers.util.helpers.CustomerDetailDto;
-import org.mifos.customers.util.helpers.CustomerFlagDto;
-import org.mifos.customers.util.helpers.CustomerMeetingDto;
-import org.mifos.customers.util.helpers.CustomerNoteDto;
-import org.mifos.customers.util.helpers.CustomerPositionDto;
-import org.mifos.customers.util.helpers.GroupDisplayDto;
-import org.mifos.customers.util.helpers.LoanCycleCounter;
-import org.mifos.customers.util.helpers.LoanDetailDto;
-import org.mifos.customers.util.helpers.SavingsDetailDto;
-import org.mifos.customers.util.helpers.SurveyDto;
+import org.mifos.dto.domain.CenterDisplayDto;
+import org.mifos.dto.domain.CenterPerformanceHistoryDto;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.CustomerAccountSummaryDto;
+import org.mifos.dto.domain.CustomerAddressDto;
+import org.mifos.dto.domain.CustomerDetailDto;
+import org.mifos.dto.domain.CustomerDto;
+import org.mifos.dto.domain.CustomerFlagDto;
+import org.mifos.dto.domain.CustomerMeetingDto;
+import org.mifos.dto.domain.CustomerNoteDto;
+import org.mifos.dto.domain.CustomerPositionOtherDto;
+import org.mifos.dto.domain.LoanDetailDto;
+import org.mifos.dto.domain.PersonnelDto;
+import org.mifos.dto.domain.SavingsDetailDto;
+import org.mifos.dto.domain.SurveyDto;
+import org.mifos.dto.domain.ValueListElement;
+import org.mifos.dto.screen.ClientDisplayDto;
+import org.mifos.dto.screen.GroupDisplayDto;
+import org.mifos.dto.screen.LoanCycleCounter;
 import org.mifos.framework.components.fieldConfiguration.business.FieldConfigurationEntity;
 import org.mifos.framework.hibernate.helper.QueryResult;
 import org.mifos.security.util.UserContext;
-
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 
 /**
  *
@@ -78,6 +77,8 @@ public interface CustomerDao {
     void save(CustomerStatusEntity cse);
 
     CustomerBO findCustomerById(Integer customerId);
+
+    CustomerBO findCustomerBySystemId(String globalCustNum);
 
     ClientBO findClientBySystemId(String globalCustNum);
 
@@ -151,7 +152,7 @@ public interface CustomerDao {
 
     List<CustomerNoteDto> getRecentCustomerNoteDto(Integer centerId);
 
-    List<CustomerPositionDto> getCustomerPositionDto(Integer centerId, UserContext userContext);
+    List<CustomerPositionOtherDto> getCustomerPositionDto(Integer centerId, UserContext userContext);
 
     CustomerMeetingDto getCustomerMeetingDto(CustomerMeetingEntity customerMeeting, UserContext userContext);
 
@@ -232,16 +233,17 @@ public interface CustomerDao {
 
     List<PersonnelLevelEntity> retrievePersonnelLevels();
 
-    Iterator<CustomerCustomFieldEntity> getCustomFieldResponses(Short customFieldId);
-
-    Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForClientIterator();
-
-    Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForGroupIterator();
+    List<Object[]> getCustomFieldResponses(List<Short> customFieldIds);
 
     /**
      * <code>phoneNumber</code> is stripped to contain numeric characters only
      */
     List<CustomerDto> findCustomersWithGivenPhoneNumber(String phoneNumber);
 
-    Iterator<CustomFieldDefinitionEntity> retrieveCustomFieldEntitiesForCenterIterator();
+    List<AccountBO> retrieveAllClosedLoanAndSavingsAccounts(Integer customerId);
+
+    List<CustomerDto> findTopOfHierarchyCustomersUnderLoanOfficer(CustomerLevel customerLevel, Short loanOfficerId,
+            Short officeId);
+
+    List<ClientBO> findActiveClientsUnderParent(String searchId, Short branchId);
 }

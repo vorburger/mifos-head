@@ -20,26 +20,45 @@ package org.mifos.accounts.loan.business.service;
  * explanation of the license and how it is applied.
  */
 
+import junit.framework.Assert;
+import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mifos.accounts.business.AccountActionDateEntity;
+import org.mifos.accounts.business.AccountBO;
+import org.mifos.accounts.business.AccountPaymentEntity;
 import org.mifos.accounts.loan.business.LoanBO;
+import org.mifos.accounts.loan.business.LoanScheduleEntity;
+import org.mifos.accounts.loan.business.OriginalLoanScheduleEntity;
+import org.mifos.accounts.loan.business.ScheduleCalculatorAdaptor;
+import org.mifos.accounts.loan.business.matchers.LoanScheduleEntityMatcher;
+import org.mifos.accounts.loan.business.matchers.OriginalLoanScheduleEntitiesMatcher;
+import org.mifos.accounts.loan.persistance.LoanPersistence;
 import org.mifos.accounts.loan.struts.actionforms.LoanAccountActionForm;
 import org.mifos.accounts.loan.util.helpers.RepaymentScheduleInstallment;
 import org.mifos.accounts.loan.util.helpers.RepaymentScheduleInstallmentBuilder;
 import org.mifos.accounts.productdefinition.util.helpers.InterestType;
+import org.mifos.accounts.util.helpers.PaymentData;
+import org.mifos.accounts.util.helpers.PaymentStatus;
+import org.mifos.application.holiday.business.service.HolidayService;
 import org.mifos.application.master.business.InterestTypesEntity;
 import org.mifos.application.master.business.MifosCurrency;
+import org.mifos.customers.business.CustomerBO;
+import org.mifos.customers.personnel.business.PersonnelBO;
+import org.mifos.framework.TestUtils;
+import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.util.helpers.DateUtils;
 import org.mifos.framework.util.helpers.Money;
+import org.mockito.Matchers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import java.math.BigDecimal;
-import java.util.Calendar;
+import java.sql.*;
+import java.util.*;
 import java.util.Date;
-import java.util.List;
-import java.util.Locale;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.is;
@@ -57,12 +76,78 @@ public class LoanBusinessServiceTest {
     @Mock
     private LoanBO loanBO;
 
+    @Mock
+    private HolidayService holidayService;
+
+    @Mock
+    private AccountPaymentEntity accountPaymentEntity;
+
+    @Mock
+    ScheduleCalculatorAdaptor scheduleCalculatorAdaptor;
+
+    @Mock
+    private PaymentData paymentData;
+
+    @Mock
+    private PersonnelBO personnel;
+
+    @Mock
+    private LoanPersistence loanPersistence;
+    private Short officeId;
+
+
     @Before
     public void setupAndInjectDependencies() {
-        loanBusinessService = new LoanBusinessService();
+        loanBusinessService = new LoanBusinessService(loanPersistence, null, null, holidayService, scheduleCalculatorAdaptor);
         locale = new Locale("en", "GB");
         installmentBuilder = new RepaymentScheduleInstallmentBuilder(locale);
         rupee = new MifosCurrency(Short.valueOf("1"), "Rupee", BigDecimal.valueOf(1), "INR");
+        officeId = Short.valueOf("1");
+    }
+
+    @Test
+    public void shouldApplyPaymentForInterestRecalculationLoanInterestType() {
+        when(loanBO.isDecliningBalanceInterestRecalculation()).thenReturn(true);
+        Date transactionDate = new Date();
+        Money totalAmount = new Money(rupee, 10.0);
+        when(paymentData.getTransactionDate()).thenReturn(transactionDate);
+        when(paymentData.getTotalAmount()).thenReturn(totalAmount);
+        when(paymentData.getPersonnel()).thenReturn(personnel);
+        loanBusinessService.applyPayment(paymentData, loanBO, accountPaymentEntity);
+        verify(scheduleCalculatorAdaptor, times(1)).applyPayment(loanBO, totalAmount,
+                transactionDate, personnel, accountPaymentEntity);
+        verify(loanBO, times(1)).isDecliningBalanceInterestRecalculation();
+        verify(paymentData).getTransactionDate();
+        verify(paymentData).getTotalAmount();
+        verify(paymentData).getPersonnel();
+    }
+
+    @Test
+    public void shouldApplyPaymentForNonInterestRecalculationLoanInterestType() {
+        when(loanBO.isDecliningBalanceInterestRecalculation()).thenReturn(false);
+        List<AccountActionDateEntity> installments = new ArrayList<AccountActionDateEntity>();
+        LoanScheduleEntity installment1 = mock(LoanScheduleEntity.class);
+        LoanScheduleEntity installment2 = mock(LoanScheduleEntity.class);
+        when(installment1.applyPayment(Mockito.<AccountPaymentEntity>any(), Mockito.<Money>any(), Mockito.eq(personnel), Mockito.<Date>any())).thenReturn(new Money(rupee, 100d));
+        when(installment2.applyPayment(Mockito.<AccountPaymentEntity>any(), Mockito.<Money>any(), Mockito.eq(personnel), Mockito.<Date>any())).thenReturn(new Money(rupee, 0d));
+        installments.add(installment1);
+        installments.add(installment2);
+        when(loanBO.getAccountActionDatesSortedByInstallmentId()).thenReturn(installments);
+        Date transactionDate = new Date();
+        Money totalAmount = new Money(rupee, 10.0);
+        when(paymentData.getTransactionDate()).thenReturn(transactionDate);
+        when(paymentData.getTotalAmount()).thenReturn(totalAmount);
+        when(paymentData.getPersonnel()).thenReturn(personnel);
+        loanBusinessService.applyPayment(paymentData, loanBO, accountPaymentEntity);
+        verify(scheduleCalculatorAdaptor, times(0)).applyPayment(loanBO, totalAmount,
+                transactionDate, personnel, accountPaymentEntity);
+        verify(loanBO, times(1)).getAccountActionDatesSortedByInstallmentId();
+        verify(loanBO, times(1)).isDecliningBalanceInterestRecalculation();
+        verify(paymentData).getTransactionDate();
+        verify(paymentData).getTotalAmount();
+        verify(paymentData).getPersonnel();
+        verify(installment1).applyPayment(Matchers.<AccountPaymentEntity>any(), Matchers.<Money>any(), Matchers.eq(personnel), Matchers.<Date>any());
+        verify(installment2).applyPayment(Matchers.<AccountPaymentEntity>any(), Matchers.<Money>any(), Matchers.eq(personnel), Matchers.<Date>any());
     }
 
     @Test
@@ -81,11 +166,32 @@ public class LoanBusinessServiceTest {
         when(loanAccountActionForm.isVariableInstallmentsAllowed()).thenReturn(true);
         when(loanBO.toRepaymentScheduleDto(locale)).thenReturn(installments);
         loanBusinessService.
-                computeInstallmentScheduleUsingDailyInterest(new LoanScheduleGenerationDto(getDate(2010, 8, 22),
+                applyDailyInterestRatesWhereApplicable(new LoanScheduleGenerationDto(TestUtils.getDate(22, 8, 2010),
                         loanBO, loanAccountActionForm.isVariableInstallmentsAllowed(), loanAccountActionForm.getLoanAmountValue(),
                 loanAccountActionForm.getInterestDoubleValue()), locale);
         verify(loanBO).copyInstallmentSchedule(installments);
         verify(loanBO).toRepaymentScheduleDto(locale);
+    }
+    
+    @Test
+    public void shouldComputeVariableInstallmentScheduleForVariableInstallmentsIfVariableInstallmentsIsEnabledAndInstallmentsArePassed() {
+        RepaymentScheduleInstallment installment1 =
+                getRepaymentScheduleInstallment("01-Sep-2010", 1, "94.4", "4.6", "1", "75");
+        RepaymentScheduleInstallment installment2 =
+                getRepaymentScheduleInstallment("08-Sep-2010", 2, "94.8", "4.2", "1", "100");
+        RepaymentScheduleInstallment installment3 =
+                getRepaymentScheduleInstallment("15-Sep-2010", 3, "95.3", "3.7", "1", "100");
+        LoanAccountActionForm loanAccountActionForm = mock(LoanAccountActionForm.class);
+        List<RepaymentScheduleInstallment> installments = asList(installment1, installment2, installment3);
+        when(loanAccountActionForm.getLoanAmount()).thenReturn("1000");
+        when(loanAccountActionForm.getLoanAmountValue()).thenReturn(new Money(rupee, "1000"));
+        when(loanAccountActionForm.getInterestRate()).thenReturn("24");
+        when(loanAccountActionForm.isVariableInstallmentsAllowed()).thenReturn(true);
+        loanBusinessService.
+                applyDailyInterestRatesWhereApplicable(new LoanScheduleGenerationDto(TestUtils.getDate(22, 8, 2010),
+                        loanBO, loanAccountActionForm.isVariableInstallmentsAllowed(), loanAccountActionForm.getLoanAmountValue(),
+                loanAccountActionForm.getInterestDoubleValue()), installments);
+        verify(loanBO).copyInstallmentSchedule(installments);
     }
 
     @Test
@@ -103,8 +209,8 @@ public class LoanBusinessServiceTest {
         when(loanAccountActionForm.getInterestRate()).thenReturn("24");
         when(loanAccountActionForm.isVariableInstallmentsAllowed()).thenReturn(false);
         when(loanBO.toRepaymentScheduleDto(locale)).thenReturn(installments);
-        when(loanBO.isDecliningPrincipalBalance()).thenReturn(true);
-        loanBusinessService.computeInstallmentScheduleUsingDailyInterest(new LoanScheduleGenerationDto(getDate(2010, 8, 22),
+        when(loanBO.isDecliningBalanceInterestRecalculation()).thenReturn(true);
+        loanBusinessService.applyDailyInterestRatesWhereApplicable(new LoanScheduleGenerationDto(TestUtils.getDate(22, 8, 2010),
                 loanBO, loanAccountActionForm.isVariableInstallmentsAllowed(), loanAccountActionForm.getLoanAmountValue(),
                 loanAccountActionForm.getInterestDoubleValue()), locale);
         verify(loanBO).copyInstallmentSchedule(installments);
@@ -118,14 +224,14 @@ public class LoanBusinessServiceTest {
         when(loanAccountActionForm.isVariableInstallmentsAllowed()).thenReturn(false);
         InterestTypesEntity interestTypesEntity = new InterestTypesEntity(InterestType.DECLINING);
         when(loanBO.getInterestType()).thenReturn(interestTypesEntity);
-        loanBusinessService.computeInstallmentScheduleUsingDailyInterest(new LoanScheduleGenerationDto(getDate(2010, 8, 22),
+        loanBusinessService.applyDailyInterestRatesWhereApplicable(new LoanScheduleGenerationDto(TestUtils.getDate(22, 8, 2010),
                 loanBO, loanAccountActionForm.isVariableInstallmentsAllowed(), loanAccountActionForm.getLoanAmountValue(),
                 loanAccountActionForm.getInterestDoubleValue()), locale);
         verify(loanBO, never()).copyInstallmentSchedule(any(List.class));
     }
 
     @Test
-    public void shouldGenerateMonthlyInstallmentScheduleFromRepaymentSchedule() {
+    public void shouldGenerateMonthlyInstallmentScheduleFromRepaymentScheduleUsingDailyInterest() {
         MifosCurrency rupee = new MifosCurrency(Short.valueOf("1"), "Rupee", BigDecimal.valueOf(1), "INR");
         RepaymentScheduleInstallment installment1 =
                 getRepaymentScheduleInstallment("25-Sep-2010", 1, "178.6", "20.4", "1", "100");
@@ -136,9 +242,9 @@ public class LoanBusinessServiceTest {
         RepaymentScheduleInstallment installment4 =
                 getRepaymentScheduleInstallment("25-Dec-2010", 4, "452.6", "8.9", "1", "462.5");
         List<RepaymentScheduleInstallment> installments = asList(installment1, installment2, installment3, installment4);
-        Date disbursementDate = getDate(2010, 8, 25);
+        Date disbursementDate = TestUtils.getDate(25, 8, 2010);
         final Money loanAmount = new Money(rupee, "1000");
-        loanBusinessService.generateInstallmentSchedule(new LoanScheduleGenerationDto(disbursementDate, loanAmount, 24d, installments));
+        loanBusinessService.applyDailyInterestRates(new LoanScheduleGenerationDto(disbursementDate, loanAmount, 24d, installments));
 
         assertInstallment(installment1, "78.6", "20.4");
         assertInstallment(installment2, "180.8", "18.2");
@@ -147,7 +253,7 @@ public class LoanBusinessServiceTest {
     }
 
     @Test
-    public void shouldGenerateWeeklyInstallmentScheduleFromRepaymentSchedule() {
+    public void shouldGenerateWeeklyInstallmentScheduleFromRepaymentScheduleUsingDailyInterest() {
         MifosCurrency rupee = new MifosCurrency(Short.valueOf("1"), "Rupee", BigDecimal.valueOf(1), "INR");
         RepaymentScheduleInstallment installment1 =
                 getRepaymentScheduleInstallment("01-Sep-2010", 1, "194.4", "4.6", "1", "100");
@@ -158,9 +264,9 @@ public class LoanBusinessServiceTest {
         RepaymentScheduleInstallment installment4 =
                 getRepaymentScheduleInstallment("22-Sep-2010", 4, "414.1", "1.9", "1", "417.0");
         List<RepaymentScheduleInstallment> installments = asList(installment1, installment2, installment3, installment4);
-        Date disbursementDate = getDate(2010, 8, 25);
+        Date disbursementDate = TestUtils.getDate(25, 8, 2010);
         final Money loanAmount = new Money(rupee, "1000");
-        loanBusinessService.generateInstallmentSchedule(new LoanScheduleGenerationDto(disbursementDate, loanAmount, 24d, installments));
+        loanBusinessService.applyDailyInterestRates(new LoanScheduleGenerationDto(disbursementDate, loanAmount, 24d, installments));
 
         assertInstallment(installment1, "94.4", "4.6");
         assertInstallment(installment2, "194.8", "4.2");
@@ -169,7 +275,7 @@ public class LoanBusinessServiceTest {
     }
 
     @Test
-    public void shouldGenerateInstallmentScheduleFromRepaymentSchedule() {
+    public void shouldGenerateInstallmentScheduleFromRepaymentScheduleUsingDailyInterest() {
         RepaymentScheduleInstallment installment1 =
                 getRepaymentScheduleInstallment("01-Sep-2010", 1, "94.4", "4.6", "1", "75");
         RepaymentScheduleInstallment installment2 =
@@ -186,9 +292,9 @@ public class LoanBusinessServiceTest {
                 getRepaymentScheduleInstallment("18-Nov-2010", 7, "439.2", "4.9", "1", "445.1");
         List<RepaymentScheduleInstallment> installments = asList(installment1, installment2, installment3,
                 installment4, installment5, installment6, installment7);
-        Date disbursementDate = getDate(2010, 8, 25);
+        Date disbursementDate = TestUtils.getDate(25, 8, 2010);
         final Money loanAmount = new Money(rupee, "1000");
-        loanBusinessService.generateInstallmentSchedule(new LoanScheduleGenerationDto(disbursementDate, loanAmount, 24d, installments));
+        loanBusinessService.applyDailyInterestRates(new LoanScheduleGenerationDto(disbursementDate, loanAmount, 24d, installments));
 
         assertInstallment(installment1, "69.4", "4.6");
         assertInstallment(installment2, "94.7", "4.3");
@@ -217,9 +323,12 @@ public class LoanBusinessServiceTest {
                 getRepaymentScheduleInstallment("18-Nov-2010", 7, "439.2", "4.9", "1", "445.1");
         List<RepaymentScheduleInstallment> installments = asList(installment1, installment2, installment3,
                 installment4, installment5, installment6, installment7);
-        Date initialDisbursementDate = getDate(2010, 8, 25);
-        Date disbursementDate = getDate(2010, 8, 30);
-        loanBusinessService.adjustInstallmentGapsPostDisbursal(installments,initialDisbursementDate,disbursementDate);
+        Date initialDisbursementDate = TestUtils.getDate(25, 8, 2010);
+        Date disbursementDate = TestUtils.getDate(30, 8, 2010);
+        when(holidayService.getNextWorkingDay(Matchers.<Date>any(), eq(officeId))).thenReturn(TestUtils.getDate(6, 9, 2010),
+                TestUtils.getDate(13, 9, 2010), TestUtils.getDate(20, 9, 2010), TestUtils.getDate(20, 10, 2010), TestUtils.getDate(30, 10, 2010),
+                TestUtils.getDate(6, 11, 2010), TestUtils.getDate(23, 11, 2010));
+        loanBusinessService.adjustInstallmentGapsPostDisbursal(installments, initialDisbursementDate, disbursementDate, officeId);
         assertInstallmentDueDate(installment1, "06-Sep-2010");
         assertInstallmentDueDate(installment2, "13-Sep-2010");
         assertInstallmentDueDate(installment3, "20-Sep-2010");
@@ -227,6 +336,7 @@ public class LoanBusinessServiceTest {
         assertInstallmentDueDate(installment5, "30-Oct-2010");
         assertInstallmentDueDate(installment6, "06-Nov-2010");
         assertInstallmentDueDate(installment7, "23-Nov-2010");
+        verify(holidayService, times(7)).getNextWorkingDay(Matchers.<Date>any(), eq(officeId));
     }
 
     @Test
@@ -247,9 +357,12 @@ public class LoanBusinessServiceTest {
                 getRepaymentScheduleInstallment("18-Nov-2010", 7, "439.2", "4.9", "1", "445.1");
         List<RepaymentScheduleInstallment> installments = asList(installment1, installment2, installment3,
                 installment4, installment5, installment6, installment7);
-        Date initialDisbursementDate = getDate(2010, 8, 25);
-        Date disbursementDate = getDate(2010, 8, 20);
-        loanBusinessService.adjustInstallmentGapsPostDisbursal(installments,initialDisbursementDate,disbursementDate);
+        Date initialDisbursementDate = TestUtils.getDate(25, 8, 2010);
+        Date disbursementDate = TestUtils.getDate(20, 8, 2010);
+        when(holidayService.getNextWorkingDay(Matchers.<Date>any(), eq(officeId))).thenReturn(TestUtils.getDate(27, 8, 2010),
+                TestUtils.getDate(3, 9, 2010), TestUtils.getDate(10, 9, 2010), TestUtils.getDate(11, 10, 2010), TestUtils.getDate(21, 10, 2010),
+                TestUtils.getDate(28, 10, 2010), TestUtils.getDate(15, 11, 2010));
+        loanBusinessService.adjustInstallmentGapsPostDisbursal(installments, initialDisbursementDate, disbursementDate, officeId);
         assertInstallmentDueDate(installment1, "27-Aug-2010");
         assertInstallmentDueDate(installment2, "03-Sep-2010");
         assertInstallmentDueDate(installment3, "10-Sep-2010");
@@ -257,7 +370,41 @@ public class LoanBusinessServiceTest {
         assertInstallmentDueDate(installment5, "21-Oct-2010");
         assertInstallmentDueDate(installment6, "28-Oct-2010");
         assertInstallmentDueDate(installment7, "15-Nov-2010");
+        verify(holidayService, times(7)).getNextWorkingDay(Matchers.<Date>any(), eq(officeId));
     }
+
+    @Test
+    public void persistOriginalSchedule() throws PersistenceException {
+        List<LoanScheduleEntity> installments = new ArrayList<LoanScheduleEntity>();
+        MifosCurrency mifosCurrency = new MifosCurrency(Short.valueOf("1"), "Rupee", BigDecimal.valueOf(1), "INR");
+        Money money = new Money(mifosCurrency,"123");
+        AccountBO accountBO = mock(AccountBO.class);
+        CustomerBO customerBO = mock(CustomerBO.class);
+        when(accountBO.getCurrency()).thenReturn(mifosCurrency);
+        LoanScheduleEntity loanScheduleEntity = new LoanScheduleEntity(accountBO, customerBO, new Short("1"),
+                                        new java.sql.Date(new Date().getTime()), PaymentStatus.UNPAID, money,money);
+        installments.add(loanScheduleEntity);
+        when(loanBO.getLoanScheduleEntities()).thenReturn(installments);
+        loanBusinessService.persistOriginalSchedule(loanBO);
+        ArrayList<OriginalLoanScheduleEntity> expected = new ArrayList<OriginalLoanScheduleEntity>();
+        expected.add(new OriginalLoanScheduleEntity(loanScheduleEntity));
+        verify(loanPersistence).saveOriginalSchedule(Mockito.argThat(
+                new OriginalLoanScheduleEntitiesMatcher(expected)
+        ));
+    }
+
+    @Test
+    public void shouldRetrieveOriginalLoanSchedule() throws PersistenceException {
+        Integer accountId = new Integer(1);
+
+        ArrayList<OriginalLoanScheduleEntity> expected = new ArrayList<OriginalLoanScheduleEntity>();
+        when(loanPersistence.getOriginalLoanScheduleEntity(accountId)).thenReturn(expected);
+        List<OriginalLoanScheduleEntity> loanScheduleEntities = loanBusinessService.retrieveOriginalLoanSchedule(accountId);
+        Assert.assertNotNull(loanScheduleEntities);
+        verify(loanPersistence).getOriginalLoanScheduleEntity(accountId);
+        Assert.assertEquals(expected,loanScheduleEntities);
+    }
+    
 
     private void assertInstallmentDueDate(RepaymentScheduleInstallment installment, String expectedDueDate) {
         String actualDueDate = DateUtils.getDBtoUserFormatString(installment.getDueDateValue(), locale);
@@ -277,9 +424,4 @@ public class LoanBusinessServiceTest {
                 withFees(new Money(rupee, fees)).withTotalValue(total).build();
     }
 
-    private Date getDate(int year, int month, int day) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(year, month - 1, day, 0, 0, 0);
-        return calendar.getTime();
-    }
 }

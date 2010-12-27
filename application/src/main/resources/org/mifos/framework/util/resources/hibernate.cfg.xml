@@ -98,6 +98,7 @@
 		<mapping resource="org/mifos/accounts/productdefinition/business/LoanAmountSameForAllLoanBO.hbm.xml" />
 		<mapping resource="org/mifos/accounts/productdefinition/business/NoOfInstallSameForAllLoanBO.hbm.xml" />
         <mapping resource="org/mifos/accounts/productdefinition/business/VariableInstallmentDetailsBO.hbm.xml" />
+        <mapping resource="org/mifos/accounts/productdefinition/business/CashFlowDetail.hbm.xml" />
 
 		<!--M2 style object for GLCODE-->
 		<mapping class="org.mifos.accounts.financial.business.GLCodeEntity" />
@@ -188,10 +189,12 @@
 
 
 		<mapping resource="org/mifos/accounts/loan/business/LoanScheduleEntity.hbm.xml" />
+		<mapping class="org.mifos.accounts.loan.business.OriginalLoanScheduleEntity" />
 		<mapping resource="org/mifos/accounts/savings/business/SavingsScheduleEntity.hbm.xml" />
 		<mapping resource="org/mifos/customers/business/CustomerScheduleEntity.hbm.xml" />
 
 		<mapping resource="org/mifos/accounts/loan/business/LoanFeeScheduleEntity.hbm.xml" />
+		<mapping class="org.mifos.accounts.loan.business.OriginalLoanFeeScheduleEntity"/>
 		<mapping resource="org/mifos/accounts/loan/business/LoanArrearsAgingEntity.hbm.xml" />
 		<mapping resource="org/mifos/customers/business/CustomerFeeScheduleEntity.hbm.xml" />
 		<mapping resource="org/mifos/customers/client/business/CustomerPictureEntity.hbm.xml" />
@@ -237,6 +240,8 @@
 		<mapping resource="org/mifos/reports/cashconfirmationreport/BranchCashConfirmationReportBO.hbm.xml" />	
 		<mapping resource="org/mifos/reports/cashconfirmationreport/BranchCashConfirmationCenterRecoveryBO.hbm.xml" />	
 		<mapping resource="org/mifos/reports/cashconfirmationreport/BranchCashConfirmationInfoBO.hbm.xml" />	
+
+        <mapping resource="org/mifos/accounts/loan/business/CalculatedInterestOnPayment.hbm.xml" />
 
 	</session-factory>
 

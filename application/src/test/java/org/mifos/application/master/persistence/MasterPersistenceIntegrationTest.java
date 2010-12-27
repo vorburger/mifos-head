@@ -28,14 +28,13 @@ import org.mifos.application.master.business.CustomValueDto;
 import org.mifos.application.master.business.CustomValueListElementDto;
 import org.mifos.application.master.business.LookUpValueLocaleEntity;
 import org.mifos.application.master.business.MasterDataEntity;
-import org.mifos.application.master.business.ValueListElement;
 import org.mifos.application.master.util.helpers.MasterConstants;
 import org.mifos.application.util.helpers.EntityType;
 import org.mifos.config.LocalizedTextLookup;
+import org.mifos.dto.domain.ValueListElement;
 import org.mifos.framework.MifosIntegrationTestCase;
 import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
-import org.mifos.framework.util.helpers.TestObjectFactory;
 import org.mifos.security.activity.DynamicLookUpValueCreationTypes;
 
 import java.util.List;
@@ -122,7 +121,7 @@ public class MasterPersistenceIntegrationTest extends MifosIntegrationTestCase {
     @Test
     public void testGetMasterEntityName() throws NumberFormatException, PersistenceException {
         MasterPersistence masterPersistence = new MasterPersistence();
-       Assert.assertEquals("Partial Application", masterPersistence.retrieveMasterEntities(1, Short.valueOf("1")));
+       Assert.assertEquals("Partial Application", masterPersistence.retrieveMasterEntities(1));
     }
 
     @Test

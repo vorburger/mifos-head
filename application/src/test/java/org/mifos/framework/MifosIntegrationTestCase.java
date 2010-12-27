@@ -54,7 +54,11 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.Log4jConfigurer;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.net.MalformedURLException;
+import java.sql.Connection;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -76,6 +80,13 @@ public class MifosIntegrationTestCase {
 
     private static IDataSet latestDataDump;
 
+    /**
+     * This is a switch to enable verification of database (cleanup) at the end of an integration tests. i.e. if a test
+     * leaves database in dirty state (not rolling back properly) then it will force it to fail. This is used for
+     * figuring out which test leaving database in inconsistent state for an another test causing it to fail.
+     */
+    protected static boolean verifyDatabaseState;
+
     protected static ExcludeTableFilter excludeTables = new ExcludeTableFilter();
 
     private static String savedFiscalCalendarRulesWorkingDays;
@@ -83,12 +94,7 @@ public class MifosIntegrationTestCase {
     @BeforeClass
     public static void init() throws Exception {
         Log4jConfigurer.initLogging(new ConfigurationLocator().getFilePath(FilePaths.LOG_CONFIGURATION_FILE));
-        excludeTables.excludeTable("config_key_value_integer");
-        excludeTables.excludeTable("personnel");
-        excludeTables.excludeTable("meeting");
-        excludeTables.excludeTable("recurrence_detail");
-        excludeTables.excludeTable("recur_on_day");
-
+        verifyDatabaseState = false;
         if (!isTestingModeSet) {
             new StandardTestingService().setTestMode(TestMode.INTEGRATION);
             isTestingModeSet = true;
@@ -98,6 +104,7 @@ public class MifosIntegrationTestCase {
     @Before
     public void before() throws Exception {
         new TestCaseInitializer().initialize();
+        dbVerificationSetUp();
         Money.setDefaultCurrency(TestUtils.RUPEE);
         DatabaseDependentTest.before();
     }
@@ -107,6 +114,7 @@ public class MifosIntegrationTestCase {
         diableCustomWorkingDays();
         TestUtils.dereferenceObjects(this);
         DatabaseDependentTest.after();
+        dbVerificationTearDown();
     }
 
     private Statistics statisticsService;
@@ -199,6 +207,37 @@ public class MifosIntegrationTestCase {
         }
         savedFiscalCalendarRulesWorkingDays = null;
     }
+
+    private void dbVerificationSetUp() throws Exception {
+        if (verifyDatabaseState) {
+            excludeTables.excludeTable("BATCH_JOB_EXECUTION");
+
+            Connection connection = StaticHibernateUtil.getSessionTL().connection();
+            connection.setAutoCommit(false);
+            DatabaseConnection dbUnitConnection = new DatabaseConnection(connection);
+            latestDataDump = new FilteredDataSet(excludeTables, dbUnitConnection.createDataSet());
+            String tmpDir = System.getProperty("java.io.tmpdir") + System.getProperty("file.separator");
+            FlatXmlDataSet.write(latestDataDump, new FileOutputStream(tmpDir + "latestDataDump.xml"));
+            FlatXmlDataSetBuilder fxmlBuilder = new FlatXmlDataSetBuilder();
+            latestDataDump = fxmlBuilder.build(new File(tmpDir + "latestDataDump.xml"));
+        }
+    }
+
+    private void dbVerificationTearDown() throws Exception,
+            FileNotFoundException, MalformedURLException {
+        if (verifyDatabaseState) {
+            Connection connection = StaticHibernateUtil.getSessionTL().connection();
+            connection.setAutoCommit(false);
+            DatabaseConnection dbUnitConnection = new DatabaseConnection(connection);
+            IDataSet upgradeDataDump = new FilteredDataSet(excludeTables, dbUnitConnection.createDataSet());
+            String tmpDir = System.getProperty("java.io.tmpdir") + System.getProperty("file.separator");
+            FlatXmlDataSet.write(upgradeDataDump, new FileOutputStream(tmpDir + "upgradeDataDump.xml"));
+            FlatXmlDataSetBuilder fxmlBuilder = new FlatXmlDataSetBuilder();
+            upgradeDataDump = fxmlBuilder.build(new File(tmpDir + "upgradeDataDump.xml"));
+            Assertion.assertEquals(latestDataDump, upgradeDataDump);
+        }
+    }
+
 
     public MifosCurrency getCurrency() {
         // TODO: will be replaced by a better way to get currency for integration tests

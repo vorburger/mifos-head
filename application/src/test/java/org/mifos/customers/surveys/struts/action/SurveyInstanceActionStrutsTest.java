@@ -62,7 +62,6 @@ import org.mifos.framework.TestUtils;
 import org.mifos.framework.business.util.Address;
 import org.mifos.framework.business.util.Name;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
-import org.mifos.framework.persistence.TestDatabase;
 import org.mifos.framework.util.helpers.Constants;
 import org.mifos.framework.util.helpers.IntegrationTestObjectMother;
 import org.mifos.framework.util.helpers.TestObjectFactory;
@@ -717,8 +716,8 @@ public class SurveyInstanceActionStrutsTest extends MifosMockStrutsTestCase {
         PersonnelBO personnel = new PersonnelBO(personnelLevel, office, Integer.valueOf("1"), Short.valueOf("1"),
                 "ABCD", "testusername", "xyz@yahoo.com", null, customFieldDto, name, "111111", date, Integer
                         .valueOf("1"), Integer.valueOf("1"), date, date, address, userContext.getId());
-        personnel.save();
-        return personnel;
+        IntegrationTestObjectMother.createPersonnel(personnel);
+        return IntegrationTestObjectMother.findPersonnelById(personnel.getPersonnelId());
     }
 
     private OfficeBO getBranchOffice() {

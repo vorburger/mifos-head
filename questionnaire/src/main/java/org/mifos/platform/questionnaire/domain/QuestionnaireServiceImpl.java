@@ -125,8 +125,10 @@ public class QuestionnaireServiceImpl implements QuestionnaireService {
         List<QuestionEntity> questions;
         if (isNotEmpty(questionIdsToExclude)) {
             questions = questionDao.retrieveByStateExcluding(questionIdsToExclude, QuestionState.ACTIVE.getValue());
+            questions.addAll(questionDao.retrieveByStateExcluding(questionIdsToExclude, QuestionState.ACTIVE_NOT_EDITABLE.getValue()));
         } else {
             questions = questionDao.retrieveByState(QuestionState.ACTIVE.getValue());
+            questions.addAll(questionDao.retrieveByState(QuestionState.ACTIVE_NOT_EDITABLE.getValue()));
         }
         return questionnaireMapper.mapToQuestionDetails(questions);
     }
@@ -180,7 +182,7 @@ public class QuestionnaireServiceImpl implements QuestionnaireService {
         questionnaireValidator.validateForEventSource(eventSourceDto);
         List<QuestionGroup> questionGroups = questionGroupDao.retrieveQuestionGroupsByEventSource(eventSourceDto.getEvent(), eventSourceDto.getSource());
         List<QuestionGroupDetail> questionGroupDetails = questionnaireMapper.mapToQuestionGroupDetails(questionGroups);
-        removeInactiveSectionsAndQuestions(questionGroupDetails);
+        removeInActiveSectionsAndQuestions(questionGroupDetails);
         return questionGroupDetails;
     }
 
@@ -331,8 +333,19 @@ public class QuestionnaireServiceImpl implements QuestionnaireService {
     public Integer uploadPPIQuestionGroup(String country) {
         String ppiXmlForCountry = ppiSurveyLocator.getPPIUploadFileForCountry(country);
         QuestionGroupDto questionGroupDto = questionGroupDefinitionParser.parse(ppiXmlForCountry);
-        activateQGWithQuestions(questionGroupDto); // according to MIFOS-4146 all uploaded PPI should be active
+        activateQGWithQuestions(questionGroupDto); // according to MIFOS-4146 all uploaded QG and questions should be active
+        if (questionGroupDto.isPpi()) { // according to MIFOS-4149 PPI questions should be editable
+            makePPIQuestionsNotEditable(questionGroupDto);
+        }
         return defineQuestionGroup(questionGroupDto, false);
+    }
+
+    private void makePPIQuestionsNotEditable(QuestionGroupDto questionGroupDto) {
+        for (SectionDto section : questionGroupDto.getSections()) {
+            for (QuestionDto question : section.getQuestions()) {
+                question.setEditable(false);
+            }
+        }
     }
 
     private void activateQGWithQuestions(QuestionGroupDto questionGroupDto) {
@@ -340,6 +353,7 @@ public class QuestionnaireServiceImpl implements QuestionnaireService {
         for (SectionDto section : questionGroupDto.getSections()) {
             for (QuestionDto question : section.getQuestions()) {
                 question.setActive(true);
+                question.setEditable(true);
             }
         }
     }
@@ -423,24 +437,27 @@ public class QuestionnaireServiceImpl implements QuestionnaireService {
         }
     }
 
-    private void removeInactiveSectionsAndQuestions(List<QuestionGroupDetail> questionGroupDetails) {
-        for (QuestionGroupDetail questionGroupDetail : questionGroupDetails) {
-            removeInactiveSectionsAndQuestions(questionGroupDetail);
+    private void removeInActiveSectionsAndQuestions(List<QuestionGroupDetail> questionGroupDetails) {
+        for (Iterator<QuestionGroupDetail> questionGroupDetailIterator = questionGroupDetails.iterator(); questionGroupDetailIterator.hasNext();) {
+            QuestionGroupDetail questionGroupDetail = questionGroupDetailIterator.next();
+            removeInActiveSectionsAndQuestions(questionGroupDetail);
+            if (questionGroupDetail.hasNoActiveSectionsAndQuestions()) {
+                questionGroupDetailIterator.remove();
+            }
         }
     }
 
-    private void removeInactiveSectionsAndQuestions(QuestionGroupDetail questionGroupDetail) {
+    private void removeInActiveSectionsAndQuestions(QuestionGroupDetail questionGroupDetail) {
         for (Iterator<SectionDetail> sectionDetailIterator = questionGroupDetail.getSectionDetails().iterator(); sectionDetailIterator.hasNext();) {
             SectionDetail sectionDetail = sectionDetailIterator.next();
+            removeInActiveQuestions(sectionDetail);
             if (sectionDetail.hasNoActiveQuestions()) {
                 sectionDetailIterator.remove();
-                continue;
             }
-            removeInactiveQuestions(sectionDetail);
         }
     }
 
-    private void removeInactiveQuestions(SectionDetail sectionDetail) {
+    private void removeInActiveQuestions(SectionDetail sectionDetail) {
         for (Iterator<SectionQuestionDetail> sectionQuestionDetailIterator = sectionDetail.getQuestions().iterator(); sectionQuestionDetailIterator.hasNext();) {
             if (sectionQuestionDetailIterator.next().isInactive()) {
                 sectionQuestionDetailIterator.remove();

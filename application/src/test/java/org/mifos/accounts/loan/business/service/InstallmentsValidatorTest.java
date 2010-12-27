@@ -12,13 +12,11 @@ import org.mifos.accounts.loan.business.service.validators.ListOfInstallmentsVal
 import org.mifos.accounts.loan.util.helpers.RepaymentScheduleInstallment;
 import org.mifos.accounts.loan.util.helpers.RepaymentScheduleInstallmentBuilder;
 import org.mifos.accounts.productdefinition.business.VariableInstallmentDetailsBO;
-import org.mifos.application.master.business.MifosCurrency;
-import org.mifos.config.FiscalCalendarRules;
+import org.mifos.application.admin.servicefacade.HolidayServiceFacade;
 import org.mifos.platform.validations.Errors;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -35,8 +33,6 @@ public class InstallmentsValidatorTest {
 
     private RepaymentScheduleInstallmentBuilder installmentBuilder;
 
-    private MifosCurrency rupeeCurrency;
-
     private Locale locale;
 
     @Mock
@@ -48,14 +44,19 @@ public class InstallmentsValidatorTest {
     @Mock
     private InstallmentRulesValidator installmentRulesValidator;
 
+    @Mock
+    private HolidayServiceFacade holidayServiceFacade;
+
     private InstallmentsValidator installmentsValidator;
+
+    private Short officeId;
 
     @Before
     public void setUp() throws Exception {
         locale = new Locale("en", "GB");
         installmentBuilder = new RepaymentScheduleInstallmentBuilder(locale);
-        rupeeCurrency = new MifosCurrency(Short.valueOf("1"), "Rupee", BigDecimal.valueOf(1), "INR");
         installmentsValidator = new InstallmentsValidatorImpl(installmentFormatValidator, listOfInstallmentsValidator, installmentRulesValidator);
+        officeId = Short.valueOf("1");
     }
 
     @Test
@@ -75,7 +76,7 @@ public class InstallmentsValidatorTest {
 
         verify(installmentRulesValidator).validateForDisbursementDate(eq(installments), any(Date.class));
         verify(installmentRulesValidator).validateDueDatesForVariableInstallments(eq(installments), any(VariableInstallmentDetailsBO.class));
-        verify(installmentRulesValidator).validateForHolidays(eq(installments), any(FiscalCalendarRules.class));
+        verify(installmentRulesValidator).validateForHolidays(eq(installments), any(HolidayServiceFacade.class), eq(officeId));
         assertThat(errors.hasErrors(), is(false));
     }
 
@@ -92,7 +93,6 @@ public class InstallmentsValidatorTest {
     }
     
     private InstallmentValidationContext getValidationContext(Date disbursementDate) {
-        return new InstallmentValidationContext(disbursementDate, new VariableInstallmentDetailsBO(),
-                new FiscalCalendarRules());
+        return new InstallmentValidationContext(disbursementDate, new VariableInstallmentDetailsBO(), holidayServiceFacade, officeId);
     }
 }

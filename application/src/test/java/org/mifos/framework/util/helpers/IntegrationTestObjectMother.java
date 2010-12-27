@@ -20,11 +20,17 @@
 
 package org.mifos.framework.util.helpers;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.mifos.accounts.business.AccountBO;
 import org.mifos.accounts.business.AccountFeesEntity;
+import org.mifos.accounts.exceptions.AccountException;
 import org.mifos.accounts.fees.business.AmountFeeBO;
 import org.mifos.accounts.fund.business.FundBO;
 import org.mifos.accounts.fund.persistence.FundDao;
 import org.mifos.accounts.loan.business.LoanBO;
+import org.mifos.accounts.loan.persistance.LoanDao;
 import org.mifos.accounts.productdefinition.business.LoanOfferingBO;
 import org.mifos.accounts.productdefinition.business.PrdOfferingBO;
 import org.mifos.accounts.productdefinition.business.SavingsOfferingBO;
@@ -33,6 +39,7 @@ import org.mifos.accounts.productdefinition.persistence.SavingsProductDao;
 import org.mifos.accounts.savings.business.SavingsBO;
 import org.mifos.accounts.savings.persistence.GenericDao;
 import org.mifos.accounts.savings.persistence.SavingsDao;
+import org.mifos.accounts.util.helpers.PaymentData;
 import org.mifos.application.collectionsheet.persistence.OfficeBuilder;
 import org.mifos.application.holiday.business.Holiday;
 import org.mifos.application.holiday.business.HolidayBO;
@@ -54,17 +61,13 @@ import org.mifos.customers.office.persistence.OfficePersistence;
 import org.mifos.customers.persistence.CustomerDao;
 import org.mifos.customers.persistence.CustomerPersistence;
 import org.mifos.customers.personnel.business.PersonnelBO;
-import org.mifos.customers.personnel.persistence.PersonnelPersistence;
+import org.mifos.customers.personnel.persistence.PersonnelDao;
 import org.mifos.customers.personnel.util.helpers.PersonnelConstants;
 import org.mifos.dto.domain.HolidayDetails;
 import org.mifos.framework.TestUtils;
-import org.mifos.framework.exceptions.ApplicationException;
 import org.mifos.framework.exceptions.PersistenceException;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
 import org.mifos.security.util.UserContext;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  *
@@ -90,7 +93,8 @@ public class IntegrationTestObjectMother {
     private static final SavingsDao savingsDao = DependencyInjectedServiceLocator.locateSavingsDao();
     private static final SavingsProductDao savingsProductDao = DependencyInjectedServiceLocator.locateSavingsProductDao();
     private static final CustomerDao customerDao = DependencyInjectedServiceLocator.locateCustomerDao();
-    private static final PersonnelPersistence personnelPersistence = new PersonnelPersistence();
+    private static final LoanDao loanDao = DependencyInjectedServiceLocator.locateLoanDao();
+    private static final PersonnelDao personnelDao = DependencyInjectedServiceLocator.locatePersonnelDao();
     private static final CustomerPersistence customerPersistence = new CustomerPersistence();
 
     private static final CustomerService customerService = DependencyInjectedServiceLocator.locateCustomerService();
@@ -113,9 +117,8 @@ public class IntegrationTestObjectMother {
     public static PersonnelBO testUser() {
         if (testUser == null) {
             try {
-                testUser = personnelPersistence.getPersonnel(DEFAULT_INTEGRATION_TEST_USER);
-                StaticHibernateUtil.flushAndClearSession();
-            } catch (PersistenceException e) {
+                testUser = personnelDao.findPersonnelById(DEFAULT_INTEGRATION_TEST_USER);
+            } catch (Exception e) {
                 throw new IllegalStateException("PersonnelBO with id [" + DEFAULT_INTEGRATION_TEST_USER + "]. "
                         + INTEGRATION_TEST_DATA_MISSING_MESSAGE);
             }
@@ -127,8 +130,8 @@ public class IntegrationTestObjectMother {
     public static PersonnelBO systemUser() {
         if (systemUser == null) {
             try {
-                systemUser = personnelPersistence.getPersonnel(PersonnelConstants.SYSTEM_USER);
-            } catch (PersistenceException e) {
+                systemUser = personnelDao.findPersonnelById(PersonnelConstants.SYSTEM_USER);
+            } catch (Exception e) {
                 throw new IllegalStateException("PersonnelBO with id [" + PersonnelConstants.SYSTEM_USER + "]. "
                         + INTEGRATION_TEST_DATA_MISSING_MESSAGE);
             }
@@ -247,12 +250,8 @@ public class IntegrationTestObjectMother {
 
         List<AccountFeesEntity> accountFees = new ArrayList<AccountFeesEntity>();
 
-        try {
-            customerService.createCenter(center, meeting, accountFees);
-            StaticHibernateUtil.flushAndClearSession();
-        } catch (ApplicationException e) {
-            throw new RuntimeException(e);
-        }
+        customerService.createCenter(center, meeting, accountFees);
+        StaticHibernateUtil.flushAndClearSession();
     }
 
     public static void createCenter(CenterBO center, MeetingBO meeting, AmountFeeBO fee) {
@@ -265,11 +264,7 @@ public class IntegrationTestObjectMother {
         List<AccountFeesEntity> accountFees = new ArrayList<AccountFeesEntity>();
         accountFees.add(accountFee);
 
-        try {
             customerService.createCenter(center, meeting, accountFees);
-        } catch (ApplicationException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public static void createCenter(CenterBO center, MeetingBO meeting, AmountFeeBO...fees) {
@@ -283,11 +278,7 @@ public class IntegrationTestObjectMother {
             accountFees.add(accountFee);
         }
 
-        try {
-            customerService.createCenter(center, meeting, accountFees);
-        } catch (ApplicationException e) {
-            throw new RuntimeException(e);
-        }
+        customerService.createCenter(center, meeting, accountFees);
     }
 
     public static void createGroup(GroupBO group, MeetingBO meeting) {
@@ -416,8 +407,11 @@ public class IntegrationTestObjectMother {
 
     public static void createPersonnel(PersonnelBO personnel) {
         try {
-            personnel.save();
+            StaticHibernateUtil.startTransaction();
+            personnelDao.save(personnel);
+            StaticHibernateUtil.commitTransaction();
         } catch (Exception e) {
+            StaticHibernateUtil.rollbackTransaction();
             throw new MifosRuntimeException(e);
         }
     }
@@ -483,5 +477,28 @@ public class IntegrationTestObjectMother {
 
     public static CustomerBO findCustomerById(Integer customerId) {
         return customerDao.findCustomerById(customerId);
+    }
+
+    public static LoanBO findLoanBySystemId(String globalAccountNum) {
+        return loanDao.findByGlobalAccountNum(globalAccountNum);
+    }
+
+    public static PersonnelBO findPersonnelById(Short personnelId) {
+        return personnelDao.findPersonnelById(personnelId);
+    }
+
+    public static void applyAccountPayment(AccountBO loan, PaymentData paymentData) {
+
+        try {
+            StaticHibernateUtil.startTransaction();
+            loan.applyPayment(paymentData);
+            StaticHibernateUtil.commitTransaction();
+        } catch (AccountException e) {
+            StaticHibernateUtil.rollbackTransaction();
+            throw new RuntimeException(e);
+        } finally {
+            StaticHibernateUtil.closeSession();
+        }
+
     }
 }

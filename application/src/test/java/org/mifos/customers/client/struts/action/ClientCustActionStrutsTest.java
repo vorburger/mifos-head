@@ -20,7 +20,15 @@
 
 package org.mifos.customers.client.struts.action;
 
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.List;
+import java.util.Locale;
+
 import junit.framework.Assert;
+
 import org.mifos.accounts.business.AccountBO;
 import org.mifos.accounts.fees.business.AmountFeeBO;
 import org.mifos.accounts.fees.business.FeeDto;
@@ -46,11 +54,8 @@ import org.mifos.customers.business.CustomerBO;
 import org.mifos.customers.center.business.CenterBO;
 import org.mifos.customers.client.business.ClientBO;
 import org.mifos.customers.client.business.ClientInitialSavingsOfferingEntity;
-import org.mifos.customers.client.business.ClientNameDetailDto;
-import org.mifos.customers.client.business.ClientPersonalDetailDto;
 import org.mifos.customers.client.business.ClientTestUtils;
 import org.mifos.customers.client.business.NameType;
-import org.mifos.customers.client.business.service.ClientInformationDto;
 import org.mifos.customers.client.persistence.ClientPersistence;
 import org.mifos.customers.client.struts.actionforms.ClientCustActionForm;
 import org.mifos.customers.client.util.helpers.ClientConstants;
@@ -63,8 +68,13 @@ import org.mifos.customers.personnel.persistence.PersonnelPersistence;
 import org.mifos.customers.personnel.util.helpers.PersonnelConstants;
 import org.mifos.customers.util.helpers.CustomerConstants;
 import org.mifos.customers.util.helpers.CustomerStatus;
-import org.mifos.customers.util.helpers.SavingsDetailDto;
+import org.mifos.domain.builders.MifosUserBuilder;
+import org.mifos.dto.domain.ApplicableAccountFeeDto;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.domain.SavingsDetailDto;
+import org.mifos.dto.screen.ClientInformationDto;
+import org.mifos.dto.screen.ClientNameDetailDto;
+import org.mifos.dto.screen.ClientPersonalDetailDto;
 import org.mifos.framework.MifosMockStrutsTestCase;
 import org.mifos.framework.TestUtils;
 import org.mifos.framework.business.util.Address;
@@ -78,14 +88,13 @@ import org.mifos.framework.struts.plugin.helper.EntityMasterData;
 import org.mifos.framework.util.helpers.Constants;
 import org.mifos.framework.util.helpers.SessionUtils;
 import org.mifos.framework.util.helpers.TestObjectFactory;
+import org.mifos.security.MifosUser;
 import org.mifos.security.util.UserContext;
-
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.Locale;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
 
 public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
     public ClientCustActionStrutsTest() throws Exception {
@@ -485,15 +494,15 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
         addRequestParameter("input", "personalInfo");
         addRequestParameter(Constants.CURRENTFLOWKEY, flowKey);
         actionPerform();
-        List<FeeDto> feeList = (List<FeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST,
+        List<ApplicableAccountFeeDto> feeList = (List<ApplicableAccountFeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST,
                 request);
-        FeeDto fee = feeList.get(0);
+        ApplicableAccountFeeDto fee = feeList.get(0);
         setRequestPathInfo("/clientCustAction.do");
         addRequestParameter("method", "preview");
         addRequestParameter("input", "mfiInfo");
-        addRequestParameter("selectedFee[0].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[0].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[0].amount", "100");
-        addRequestParameter("selectedFee[1].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[1].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[1].amount", "150");
         addRequestParameter(Constants.CURRENTFLOWKEY, flowKey);
         actionPerform();
@@ -523,13 +532,12 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
         addRequestParameter("input", "personalInfo");
         addRequestParameter(Constants.CURRENTFLOWKEY, flowKey);
         actionPerform();
-        List<FeeDto> feeList = (List<FeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST,
-                request);
-        FeeDto fee = feeList.get(0);
+        List<ApplicableAccountFeeDto> feeList = (List<ApplicableAccountFeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, request);
+        ApplicableAccountFeeDto fee = feeList.get(0);
         setRequestPathInfo("/clientCustAction.do");
         addRequestParameter("input", "mfiInfo");
         addRequestParameter("method", "preview");
-        addRequestParameter("selectedFee[0].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[0].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[0].amount", "");
         addRequestParameter(Constants.CURRENTFLOWKEY, flowKey);
         actionPerform();
@@ -604,10 +612,9 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
         List<CustomFieldDto> customFieldDefs = getCustomFieldFromSession();
         List<BusinessActivityEntity> povertyStatus = (List<BusinessActivityEntity>) SessionUtils.getAttribute(
                 ClientConstants.POVERTY_STATUS, request);
-        List<FeeDto> feeList = (List<FeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST,
-                request);
+        List<ApplicableAccountFeeDto> feeList = (List<ApplicableAccountFeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, request);
         Assert.assertEquals(1, feeList.size());
-        FeeDto fee = feeList.get(0);
+        ApplicableAccountFeeDto fee = feeList.get(0);
 
         setRequestPathInfo("/clientCustAction.do");
         addRequestParameter("method", "next");
@@ -635,7 +642,7 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
         addRequestParameter("method", "preview");
         addRequestParameter("input", "mfiInfo");
         addRequestParameter("formedByPersonnel", "1");
-        addRequestParameter("selectedFee[0].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[0].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[0].amount", fee.getAmount());
         request.setAttribute(Constants.CURRENTFLOWKEY, flowKey);
         SessionUtils.setAttribute(CustomerConstants.CUSTOMER_MEETING, new MeetingBO(RecurrenceType.WEEKLY, (short) 2,
@@ -680,14 +687,13 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
         }
         addRequestParameter(Constants.CURRENTFLOWKEY, flowKey);
         actionPerform();
-        List<FeeDto> feeList = (List<FeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST,
-                request);
-        FeeDto fee = feeList.get(0);
+        List<ApplicableAccountFeeDto> feeList = (List<ApplicableAccountFeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, request);
+        ApplicableAccountFeeDto fee = feeList.get(0);
         setRequestPathInfo("/clientCustAction.do");
         addRequestParameter("method", "preview");
         addRequestParameter("input", "mfiInfo");
         addRequestParameter("formedByPersonnel", "1");
-        addRequestParameter("selectedFee[0].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[0].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[0].amount", fee.getAmount());
         request.setAttribute(Constants.CURRENTFLOWKEY, flowKey);
         SessionUtils.setAttribute(CustomerConstants.CUSTOMER_MEETING, new MeetingBO(RecurrenceType.MONTHLY, Short
@@ -772,6 +778,13 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
     }
 
     public void testCreateSuccessWithAssociatedSavingsOfferings() throws Exception {
+
+        SecurityContext securityContext = new SecurityContextImpl();
+        MifosUser principal = new MifosUserBuilder().nonLoanOfficer().withAdminRole().build();
+        Authentication authentication = new TestingAuthenticationToken(principal, principal);
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
         savingsOffering1 = TestObjectFactory.createSavingsProduct("savingsPrd1", "s1", SavingsType.MANDATORY,
                 ApplicableTo.CLIENTS, new Date(System.currentTimeMillis()));
         List<FeeDto> feesToRemove = getFees(RecurrenceType.WEEKLY);
@@ -850,7 +863,14 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
     }
 
     public void testCreateSuccessWithoutGroup() throws Exception {
-        List<FeeDto> feesToRemove = getFees(RecurrenceType.WEEKLY);
+
+        SecurityContext securityContext = new SecurityContextImpl();
+        MifosUser principal = new MifosUserBuilder().nonLoanOfficer().withAdminRole().build();
+        Authentication authentication = new TestingAuthenticationToken(principal, principal);
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+//        List<FeeDto> feesToRemove = getFees(RecurrenceType.WEEKLY);
         setRequestPathInfo("/clientCustAction.do");
         addRequestParameter("method", "load");
         addRequestParameter("officeId", "3");
@@ -907,7 +927,7 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
         ClientCustActionForm actionForm = (ClientCustActionForm) request.getSession().getAttribute(
                 "clientCustActionForm");
         client = TestObjectFactory.getClient(actionForm.getCustomerIdAsInt());
-        removeFees(feesToRemove);
+//        removeFees(feesToRemove);
     }
 
     public void testCreateSuccessUnderGroup() throws Exception {
@@ -1215,7 +1235,7 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
                 matchValues(auditLogRecord, "Mr", "Mrs");
             }
         }
-        
+
     }
 
     private void createClientForAuditLog() throws Exception {
@@ -1233,12 +1253,14 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
         Short povertyStatus = Short.valueOf("41");
 
         StaticHibernateUtil.startTransaction();
-        ClientNameDetailDto clientNameDetailDto = new ClientNameDetailDto(NameType.CLIENT, salutation, "Client", "",
-                "1", "");
-        ClientNameDetailDto spouseNameDetailView = new ClientNameDetailDto(NameType.SPOUSE,
-                TestObjectFactory.SAMPLE_SALUTATION, "first", "middle", "last", "secondLast");
+        ClientNameDetailDto clientNameDetailDto = new ClientNameDetailDto(NameType.CLIENT.getValue(), salutation, "Client", "", "1", "");
+        clientNameDetailDto.setNames(ClientRules.getNameSequence());
+        ClientNameDetailDto spouseNameDetailView = new ClientNameDetailDto(NameType.SPOUSE.getValue(), TestObjectFactory.SAMPLE_SALUTATION, "first", "middle", "last", "secondLast");
+        spouseNameDetailView.setNames(ClientRules.getNameSequence());
+
         ClientPersonalDetailDto clientPersonalDetailDto = new ClientPersonalDetailDto(ethincity, citizenship, handicapped,
                 businessActivities, ClientPersonalDetailDto.MARRIED, educationLevel, numChildren, gender, povertyStatus);
+
         client = new ClientBO(TestUtils.makeUser(), clientNameDetailDto.getDisplayName(), CustomerStatus
                 .fromInt(new Short("1")), null, null, new Address(), getCustomFields(), null, null, personnel, office,
                 meeting, personnel, new java.util.Date(), null, null, null, YesNoFlag.NO.getValue(),
@@ -1456,9 +1478,11 @@ public class ClientCustActionStrutsTest extends MifosMockStrutsTestCase {
         OfficeBO office = new OfficePersistence().getOffice(TestObjectFactory.HEAD_OFFICE);
         PersonnelBO personnel = new PersonnelPersistence().getPersonnel(PersonnelConstants.TEST_USER);
         meeting = getMeeting();
-        ClientNameDetailDto clientNameDetailDto = new ClientNameDetailDto(NameType.CLIENT, 1, "Client", "", "1", "");
-        ClientNameDetailDto spouseNameDetailView = new ClientNameDetailDto(NameType.SPOUSE, 1, "first", "middle",
-                "last", "secondLast");
+        ClientNameDetailDto clientNameDetailDto = new ClientNameDetailDto(NameType.CLIENT.getValue(), 1, "Client", "", "1", "");
+        clientNameDetailDto.setNames(ClientRules.getNameSequence());
+        ClientNameDetailDto spouseNameDetailView = new ClientNameDetailDto(NameType.SPOUSE.getValue(), 1, "first", "middle", "last", "secondLast");
+        spouseNameDetailView.setNames(ClientRules.getNameSequence());
+
         ClientPersonalDetailDto clientPersonalDetailDto = new ClientPersonalDetailDto(1, 1, 1, 1, 1, 1, Short.valueOf("1"), Short
                 .valueOf("1"), Short.valueOf("41"));
         client = new ClientBO(TestUtils.makeUser(), clientNameDetailDto.getDisplayName(), CustomerStatus

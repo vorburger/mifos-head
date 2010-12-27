@@ -34,30 +34,25 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.io.IOUtils;
 import org.apache.struts.action.ActionForm;
 import org.apache.struts.action.ActionForward;
 import org.apache.struts.action.ActionMapping;
 import org.apache.struts.upload.FormFile;
-import org.mifos.accounts.api.UserReferenceDto;
-import org.mifos.application.importexport.servicefacade.ImportTransactionsServiceFacade;
-import org.mifos.application.importexport.servicefacade.WebTierImportTransactionsServiceFacade;
 import org.mifos.application.importexport.struts.actionforms.ImportTransactionsActionForm;
 import org.mifos.application.servicefacade.ListItem;
+import org.mifos.dto.domain.ParseResultDto;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.business.service.BusinessService;
 import org.mifos.framework.exceptions.ServiceException;
-import org.mifos.framework.plugin.PluginManager;
 import org.mifos.framework.struts.action.BaseAction;
+import org.mifos.framework.util.helpers.Money;
 import org.mifos.security.util.ActionSecurity;
 import org.mifos.security.util.SecurityConstants;
 import org.mifos.security.util.UserContext;
-import org.mifos.spi.ParseResultDto;
-import org.mifos.spi.TransactionImport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class takes the {@link ImportTransactionsActionForm} and retrieves file
@@ -68,8 +63,8 @@ import org.mifos.spi.TransactionImport;
 public class ImportTransactionsAction extends BaseAction {
     private static final Logger logger = LoggerFactory.getLogger(ImportTransactionsAction.class);
 
-    static final String IMPORT_TEMPORARY_FILENAME = "importTemporaryFilename";
-    static final String IMPORT_PLUGIN_CLASSNAME = "importPluginClassname";
+    private static final String IMPORT_TEMPORARY_FILENAME = "importTemporaryFilename";
+    private static final String IMPORT_PLUGIN_CLASSNAME = "importPluginClassname";
 
 	public static final String SESSION_ATTRIBUTE_LOG = "importTransactionLog";
 	public static final String SESSION_ATTRIBUTE_LOG_FILENAME = "importTransactionLogFilename";
@@ -84,20 +79,19 @@ public class ImportTransactionsAction extends BaseAction {
     }
 
     public ActionForward load(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         final ImportTransactionsActionForm importTransactionsForm = (ImportTransactionsActionForm) form;
         importTransactionsForm.clear();
         clearOurSessionVariables(request.getSession());
-        final List<ListItem<String>> importPlugins = new ArrayList<ListItem<String>>();
-        for (TransactionImport ti : new PluginManager().loadImportPlugins()) {
-            importPlugins.add(new ListItem<String>(ti.getClass().getName(), ti.getDisplayName()));
-        }
+
+        final List<ListItem<String>> importPlugins = this.importTransactionsServiceFacade.retrieveImportPlugins();
+
         request.setAttribute("importPlugins", importPlugins);
         return mapping.findForward("import_load");
     }
 
     public ActionForward upload(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         final ImportTransactionsActionForm importTransactionsForm = (ImportTransactionsActionForm) form;
 
         final FormFile importTransactionsFile = importTransactionsForm.getImportTransactionsFile();
@@ -108,20 +102,18 @@ public class ImportTransactionsAction extends BaseAction {
         final String tempFilename = saveImportAsTemporaryFile(importTransactionsFile.getInputStream());
         request.getSession().setAttribute(IMPORT_TEMPORARY_FILENAME, tempFilename);
 
-        final TransactionImport ti = getInitializedImportPlugin(importPluginClassname, getUserContext(request).getId());
-        final ParseResultDto importResult = ti.parse(importTransactionsFile.getInputStream());
+        final ParseResultDto importResult = this.importTransactionsServiceFacade.parseImportTransactions(importPluginClassname, importTransactionsFile.getInputStream());
 
         final List<String> errorsForDisplay = new ArrayList<String>();
         if (!importResult.getParseErrors().isEmpty()) {
             errorsForDisplay.addAll(importResult.getParseErrors());
         }
 
-
-        int numberRowSuccessfullyParsed = ti.getSuccessfullyParsedRows();
-
+        int numberRowSuccessfullyParsed = importResult.getNumberRowSuccessfullyParsed();
         if(numberRowSuccessfullyParsed == -1) {
             numberRowSuccessfullyParsed = importResult.getSuccessfullyParsedPayments().size();
         }
+
         boolean submitButtonDisabled = false;
         if (numberRowSuccessfullyParsed == 0) {
             submitButtonDisabled = true;
@@ -132,10 +124,12 @@ public class ImportTransactionsAction extends BaseAction {
 			request.setAttribute("numberOfErrorRows", importResult.getNumberOfErrorRows());
 			request.setAttribute("numberOfIgnoredRows", importResult.getNumberOfIgnoredRows());
 			request.setAttribute("numberOfReadRows", importResult.getNumberOfReadRows());
-			request.setAttribute("totalAmountOfTransactionsImported", importResult.getTotalAmountOfTransactionsImported());
-			request.setAttribute("totalAmountOfTransactionsWithError", importResult.getTotalAmountOfTransactionsWithError());
+			request.setAttribute("totalAmountOfTransactionsImported", new Money(Money.getDefaultCurrency(),
+                importResult.getTotalAmountOfTransactionsImported()).toString());
+			request.setAttribute("totalAmountOfTransactionsWithError", new Money(Money.getDefaultCurrency(),
+                importResult.getTotalAmountOfTransactionsWithError()).toString());
 
-			request.getSession().setAttribute(SESSION_ATTRIBUTE_LOG, generateStatusLogfile(importResult, ti).getBytes());
+			request.getSession().setAttribute(SESSION_ATTRIBUTE_LOG, importResult.getStatusLogFile().getBytes());
 			request.getSession().setAttribute(SESSION_ATTRIBUTE_LOG_FILENAME, statusLogfileName(importTransactionsFile.getFileName()));
 		} else {
 			request.setAttribute("isExtraInformationFilled", false);
@@ -150,13 +144,6 @@ public class ImportTransactionsAction extends BaseAction {
         importTransactionsFile.destroy();
 
         return mapping.findForward("import_results");
-    }
-
-    private TransactionImport getInitializedImportPlugin(String importPluginClassname, Short userId) {
-        final TransactionImport ti = new PluginManager().getImportPlugin(importPluginClassname);
-        final UserReferenceDto userReferenceDTO = new UserReferenceDto(userId);
-        ti.setUserReferenceDto(userReferenceDTO);
-        return ti;
     }
 
     /**
@@ -177,16 +164,16 @@ public class ImportTransactionsAction extends BaseAction {
     }
 
     public ActionForward confirm(ActionMapping mapping, ActionForm form, HttpServletRequest request,
-            HttpServletResponse response) throws Exception {
+            @SuppressWarnings("unused") HttpServletResponse response) throws Exception {
         final String tempFilename = (String) request.getSession().getAttribute(IMPORT_TEMPORARY_FILENAME);
         final String importPluginClassname = (String) request.getSession().getAttribute(IMPORT_PLUGIN_CLASSNAME);
         clearOurSessionVariables(request.getSession());
-        final TransactionImport transactionImport = getInitializedImportPlugin(importPluginClassname, getUserContext(
-                request).getId());
 
-        final ParseResultDto importResult = transactionImport.parse(new FileInputStream(tempFilename));
         final ImportTransactionsActionForm importTransactionsForm = (ImportTransactionsActionForm) form;
         final String importTransactionsFileName = importTransactionsForm.getImportTransactionsFile().getFileName();
+
+        FileInputStream transactionsTempFile = new FileInputStream(tempFilename);
+        final ParseResultDto importResult = this.importTransactionsServiceFacade.confirmImport(importPluginClassname, transactionsTempFile);
 
         if (null != importResult.getParseErrors() && !importResult.getParseErrors().isEmpty()) {
             for (String error : importResult.getParseErrors()) {
@@ -194,20 +181,15 @@ public class ImportTransactionsAction extends BaseAction {
             }
         }
 
-        transactionImport.store(new FileInputStream(tempFilename));
+        this.importTransactionsServiceFacade.saveImportedFileName(importTransactionsFileName);
 
-        final UserContext userContext = getUserContext(request);
-        ImportTransactionsServiceFacade importedFilesServiceFacade = new WebTierImportTransactionsServiceFacade();
-        importedFilesServiceFacade.saveImportedFileName(userContext, importTransactionsFileName);
-
-        logger.info(transactionImport.getSuccessfullyParsedRows() + " transaction(s) imported from "
-                + importTransactionsFileName + ".");
+        logger.info(importResult.getNumberRowSuccessfullyParsed() + " transaction(s) imported from "+ importTransactionsFileName + ".");
 
         new File(tempFilename).delete();
         return mapping.findForward("import_confirm");
     }
 
-	public ActionForward downloadLog(ActionMapping mapping, ActionForm form, HttpServletRequest request,
+	public ActionForward downloadLog(@SuppressWarnings("unused") ActionMapping mapping, @SuppressWarnings("unused") ActionForm form, HttpServletRequest request,
         HttpServletResponse response) throws Exception {
 		byte[] fileContents = (byte[]) request.getSession().getAttribute(ImportTransactionsAction.SESSION_ATTRIBUTE_LOG);
 		String fileName = (String) request.getSession().getAttribute(ImportTransactionsAction.SESSION_ATTRIBUTE_LOG_FILENAME);
@@ -217,36 +199,11 @@ public class ImportTransactionsAction extends BaseAction {
 		IOUtils.copy(new ByteArrayInputStream(fileContents), response.getOutputStream());
 		return null;
 	}
-	
-	private static final String LOG_TEMPLATE =
-			"%d rows were read.\n" +
-			"\n" +
-			"%d rows contained no errors and will be imported\n" +
-			"%d rows will be ignored\n" +
-			"%d rows contained errors and were not imported\n" +
-			"\n" +
-			"Total amount of transactions imported: %.2f\n" +
-			"Total amount of transactions with error: %.2f\n" +
-			"\n" +
-			"%s";
-
-	private String generateStatusLogfile(ParseResultDto result, TransactionImport transactionImport) {
-		String rowErrors = "";
-		if (!result.getParseErrors().isEmpty())
-			rowErrors = StringUtils.join(result.getParseErrors(), System.getProperty("line.separator"));
-		return String.format(LOG_TEMPLATE,
-				result.getNumberOfReadRows(),
-				transactionImport.getSuccessfullyParsedRows(),
-				result.getNumberOfIgnoredRows(),
-				result.getNumberOfErrorRows(),
-				result.getTotalAmountOfTransactionsImported(),
-				result.getTotalAmountOfTransactionsWithError(),
-				rowErrors);
-	}
 
 	private String statusLogfileName(String uploadedFilename) {
-		if (uploadedFilename.contains("."))
-			return uploadedFilename.split("\\.")[0] + "-log.txt";
+		if (uploadedFilename.contains(".")) {
+            return uploadedFilename.split("\\.")[0] + "-log.txt";
+        }
 		return uploadedFilename + "-log.txt";
 	}
 

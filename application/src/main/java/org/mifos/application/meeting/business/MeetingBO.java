@@ -27,7 +27,6 @@ import java.util.Locale;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
-import org.mifos.application.holiday.util.helpers.HolidayUtils;
 import org.mifos.application.meeting.MeetingTemplate;
 import org.mifos.application.meeting.exceptions.MeetingException;
 import org.mifos.application.meeting.util.helpers.MeetingConstants;
@@ -35,9 +34,12 @@ import org.mifos.application.meeting.util.helpers.MeetingType;
 import org.mifos.application.meeting.util.helpers.RankOfDay;
 import org.mifos.application.meeting.util.helpers.RecurrenceType;
 import org.mifos.application.meeting.util.helpers.WeekDay;
-import org.mifos.application.servicefacade.MeetingUpdateRequest;
 import org.mifos.config.FiscalCalendarRules;
 import org.mifos.config.persistence.ConfigurationPersistence;
+import org.mifos.dto.domain.MeetingDetailsDto;
+import org.mifos.dto.domain.MeetingDto;
+import org.mifos.dto.domain.MeetingTypeDto;
+import org.mifos.dto.domain.MeetingUpdateRequest;
 import org.mifos.framework.business.AbstractBusinessObject;
 import org.mifos.framework.util.DateTimeService;
 import org.mifos.framework.util.helpers.DateUtils;
@@ -262,7 +264,8 @@ public class MeetingBO extends AbstractBusinessObject {
         Date currentScheduleDate = currentScheduleDateTime.toDate();
         Calendar c = Calendar.getInstance();
         c.setTime(currentScheduleDate);
-        currentScheduleDate = HolidayUtils.getNextWorkingDay(c).getTime();
+        currentScheduleDate = getNextWorkingDay(c).getTime();
+
         Date meetingDateWOTimeStamp = DateUtils.getDateWithoutTimeStamp(meetingDate.getTime());
         Date endDateWOTimeStamp = DateUtils.getDateWithoutTimeStamp(endDate.getTime());
         if (meetingDateWOTimeStamp.compareTo(endDateWOTimeStamp) > 0) {
@@ -273,7 +276,7 @@ public class MeetingBO extends AbstractBusinessObject {
                 && currentScheduleDate.compareTo(endDateWOTimeStamp) < 0) {
             currentScheduleDate = findNextMatchingDate(new DateTime(currentScheduleDate)).toDate();
             c.setTime(currentScheduleDate);
-            currentScheduleDate = HolidayUtils.getNextWorkingDay(c).getTime();
+            currentScheduleDate = getNextWorkingDay(c).getTime();
         }
 
         boolean isRepaymentIndepOfMeetingEnabled = new ConfigurationPersistence().isRepaymentIndepOfMeetingEnabled();
@@ -284,6 +287,13 @@ public class MeetingBO extends AbstractBusinessObject {
         // match
         return currentScheduleDate.compareTo(endDateWOTimeStamp) <= 0
                 && currentScheduleDate.compareTo(meetingDateWOTimeStamp) == 0;
+    }
+
+    private Calendar getNextWorkingDay(final Calendar day) {
+        while (!new FiscalCalendarRules().isWorkingDay(day)) {
+            day.add(Calendar.DATE, 1);
+        }
+        return day;
     }
 
     public boolean isValidMeetingDate(final Date meetingDate, final int occurrences) throws MeetingException {
@@ -468,11 +478,14 @@ public class MeetingBO extends AbstractBusinessObject {
     public static MeetingBO fromDto(MeetingUpdateRequest meetingDto) throws MeetingException {
         MeetingBO meeting = null;
         Date startDate = new DateTimeService().getCurrentJavaDateTime();
-        if (meetingDto.getRecurrenceType().equals(RecurrenceType.WEEKLY)) {
+
+        RecurrenceType recurringType = RecurrenceType.fromInt(meetingDto.getRecurrenceType());
+        switch (recurringType) {
+        case WEEKLY:
             meeting = new MeetingBO(meetingDto.getWeekDay(), meetingDto.getRecursEvery(), startDate,
                     MeetingType.CUSTOMER_MEETING, meetingDto.getMeetingPlace());
-        } else if (meetingDto.getRecurrenceType().equals(RecurrenceType.MONTHLY)) {
-
+            break;
+        case MONTHLY:
             if (meetingDto.getDayOfMonth() != null) {
                 meeting = new MeetingBO(meetingDto.getDayOfMonth(), meetingDto.getRecursEvery(), startDate,
                         MeetingType.CUSTOMER_MEETING, meetingDto.getMeetingPlace());
@@ -480,7 +493,17 @@ public class MeetingBO extends AbstractBusinessObject {
                 meeting = new MeetingBO(meetingDto.getMonthWeek(), meetingDto.getRankOfDay(), meetingDto
                         .getRecursEvery(), startDate, MeetingType.CUSTOMER_MEETING, meetingDto.getMeetingPlace());
             }
+            break;
+        default:
+            break;
         }
+
         return meeting;
+    }
+
+    public MeetingDto toDto() {
+        MeetingTypeDto meetingType = this.meetingType.toDto();
+        MeetingDetailsDto meetingDetailsDto = this.meetingDetails.toDto();
+        return new MeetingDto(new LocalDate(this.meetingStartDate), this.meetingPlace, meetingType, meetingDetailsDto);
     }
 }

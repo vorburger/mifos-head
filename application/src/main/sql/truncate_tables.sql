@@ -1,3 +1,5 @@
+truncate table original_loan_fee_schedule;
+truncate table original_loan_schedule;
 truncate table  prd_offering_mix;
 truncate table  customer_family_detail;
 truncate table  ppi_likelihoods;
@@ -25,6 +27,7 @@ truncate table  loan_arrears_aging;
 truncate table  loan_fee_schedule;
 truncate table  customer_fee_schedule;
 truncate table  fee_trxn_detail;
+truncate table  calculated_interest_on_payment;
 truncate table  account_trxn;
 truncate table  savings_activity_details;
 truncate table  savings_account;
@@ -242,3 +245,4 @@ truncate table variable_installment_details;
 truncate table loan_cash_flow;
 truncate table monthly_cash_flow_details;
 truncate table cash_flow;
+truncate table cash_flow_detail;

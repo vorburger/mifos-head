@@ -25,6 +25,7 @@ import org.mifos.test.acceptance.framework.AbstractPage;
 import org.testng.Assert;
 
 public class CreateLoanAccountPreviewPage extends AbstractPage {
+    String editScheduleButton = "//input[@id='createloanpreview.button.edit' and @name='editButton' and @value='Edit Loan Schedule Information']";
 
     public CreateLoanAccountPreviewPage(Selenium selenium) {
         super(selenium);
@@ -41,6 +42,57 @@ public class CreateLoanAccountPreviewPage extends AbstractPage {
 
     public CreateLoanAccountPreviewPage verifyInterestTypeInLoanPreview(String interestType) {
         Assert.assertTrue(selenium.isTextPresent("Interest Rate Type :  " + interestType));
+        return this;
+    }
+
+    public ViewInstallmentDetailsPage verifyEditSchedule() {
+        Assert.assertTrue(selenium.isElementPresent(editScheduleButton));
+        selenium.click(editScheduleButton);
+        waitForPageToLoad();
+        verifyPage("SchedulePreview");
+        return new ViewInstallmentDetailsPage(selenium);
+    }
+
+    public void verifyEditScheduleDisabled() {
+        Assert.assertTrue(!selenium.isElementPresent(editScheduleButton));
+    }
+
+    public CreateLoanAccountConfirmationPage submit() {
+        selenium.click("submitForApprovalButton");
+        waitForPageToLoad();
+        return new CreateLoanAccountConfirmationPage(selenium);
+    }
+
+    public void verifyWarningForThreshold(String warningThreshold) {
+        verifyPage();
+        isTextPresentInPage("Installment amount for October 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%");
+        isTextPresentInPage("Installment amount for November 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%");
+    }
+
+    private void isTextPresentInPage(String validationMessage) {
+        Assert.assertTrue(!selenium.isElementPresent("//span[@id='schedulePreview.error.message']/li[text()=' ']"),"Blank Error message is thrown");
+        Assert.assertTrue(selenium.isTextPresent(validationMessage),validationMessage + " is missing");
+        Assert.assertTrue(!selenium.isElementPresent("//span[@id='schedulePreview.error.message']/li[text()='']"),"Blank Error message is thrown");
+    }
+
+    public CreateLoanAccountPreviewPage verifyNegativeCashFlowWarning() {
+        isTextPresentInPage("Cash flow for September 2010 is negative");
+        isTextPresentInPage("Cash flow for October 2010 is negative");
+        isTextPresentInPage("Cash flow for November 2010 is negative");
+        isTextPresentInPage("Cash flow for December 2010 is negative");
+        return this;
+        //To change body of created methods use File | Settings | File Templates.
+    }
+
+    public CreateLoanAccountPreviewPage verifyZeroCashFlowWarning(String warningThreshold) {
+        isTextPresentInPage("Cash flow for September 2010 is zero");
+        isTextPresentInPage("Cash flow for October 2010 is zero");
+        isTextPresentInPage("Cash flow for November 2010 is zero");
+        isTextPresentInPage("Cash flow for December 2010 is zero");
+        isTextPresentInPage("Installment amount for September 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%");
+        isTextPresentInPage("Installment amount for October 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%");
+        isTextPresentInPage("Installment amount for November 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%");
+        isTextPresentInPage("Installment amount for December 2010 as % of warning threshold exceeds the allowed warning threshold of " + warningThreshold+ "%");
         return this;
     }
 }

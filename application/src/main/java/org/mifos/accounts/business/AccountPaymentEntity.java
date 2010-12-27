@@ -159,7 +159,7 @@ public class AccountPaymentEntity extends AbstractEntity {
      */
     public List<AccountTrxnEntity> reversalAdjustment(final PersonnelBO personnel, final String adjustmentComment) throws AccountException {
         List<AccountTrxnEntity> newlyAddedTrxns = null;
-        this.setAmount(getAmount().subtract(getAmount()));
+        this.setAmount(Money.zero(amount.getCurrency()));
 
         if (null != getAccountTrxns() && getAccountTrxns().size() > 0) {
             newlyAddedTrxns = new ArrayList<AccountTrxnEntity>();
@@ -225,11 +225,5 @@ public class AccountPaymentEntity extends AbstractEntity {
             }
         }
         return savingsWithdrawal;
-    }
-
-    public void addAccountTrxn(PaymentData paymentData, LoanPaymentData loanPaymentData, LoanPersistence loanPersistence) {
-        addAccountTrxn(new LoanTrxnDetailEntity(this, loanPaymentData,
-                paymentData.getPersonnel(), paymentData.getTransactionDate(), AccountActionTypes.LOAN_REPAYMENT,
-                loanPaymentData.getAmountPaidWithFeeForInstallment(), AccountConstants.PAYMENT_RCVD, loanPersistence));
     }
 }

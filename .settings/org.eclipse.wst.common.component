@@ -20,7 +20,6 @@
 <wb-resource deploy-path="/" source-path="/application/src/test/resources"/>
         <wb-resource deploy-path="/" source-path="/spi/src/main/java"/>
         <wb-resource deploy-path="/" source-path="/api/src/main/java"/>
-        <wb-resource deploy-path="/" source-path="/api/src/test/java"/>
         <wb-resource deploy-path="/" source-path="/serviceInterfaces/src/test"/>
         <wb-resource deploy-path="/" source-path="/serviceInterfaces/src/test/java"/>
         <wb-resource deploy-path="/" source-path="/questionnaire/src/main/java"/>
@@ -31,5 +30,13 @@
         <wb-resource deploy-path="/" source-path="/userInterface/src/main/webapp/pages"/>
         <wb-resource deploy-path="/" source-path="/application/src/main/webapp/WEB-INF"/>
         <wb-resource deploy-path="/" source-path="/application/src/main/webapp/pages"/>
+        <wb-resource deploy-path="/" source-path="/questionnaire/src/main/webapp/WEB-INF"/>
+        <wb-resource deploy-path="/" source-path="/questionnaire/src/main/webapp/pages"/>
+        <wb-resource deploy-path="/" source-path="/cashflow/src/main/webapp/WEB-INF"/>
+        <wb-resource deploy-path="/" source-path="/cashflow/src/main/webapp/pages"/>
+        <wb-resource deploy-path="/" source-path="/savings/src/main/java"/>
+        <wb-resource deploy-path="/" source-path="/savings/src/test/java"/>
+        <wb-resource deploy-path="/" source-path="/configuration/src/main/java"/>
+        <wb-resource deploy-path="/" source-path="/configuration/src/test/java"/>
     </wb-module>
 </project-modules>

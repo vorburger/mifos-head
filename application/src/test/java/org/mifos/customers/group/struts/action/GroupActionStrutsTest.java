@@ -33,7 +33,6 @@ import junit.framework.Assert;
 
 import org.mifos.accounts.fees.business.AmountFeeBO;
 import org.mifos.accounts.fees.business.FeeDto;
-import org.mifos.accounts.fees.persistence.FeePersistence;
 import org.mifos.accounts.fees.util.helpers.FeeCategory;
 import org.mifos.accounts.loan.business.LoanBO;
 import org.mifos.accounts.persistence.AccountPersistence;
@@ -56,13 +55,15 @@ import org.mifos.customers.center.business.CenterBO;
 import org.mifos.customers.center.persistence.CenterPersistence;
 import org.mifos.customers.client.business.ClientBO;
 import org.mifos.customers.group.business.GroupBO;
-import org.mifos.customers.group.business.service.GroupInformationDto;
 import org.mifos.customers.group.struts.actionforms.GroupCustActionForm;
 import org.mifos.customers.group.util.helpers.GroupConstants;
 import org.mifos.customers.persistence.CustomerPersistence;
 import org.mifos.customers.util.helpers.CustomerConstants;
 import org.mifos.customers.util.helpers.CustomerStatus;
+import org.mifos.domain.builders.MifosUserBuilder;
+import org.mifos.dto.domain.ApplicableAccountFeeDto;
 import org.mifos.dto.domain.CustomFieldDto;
+import org.mifos.dto.screen.GroupInformationDto;
 import org.mifos.framework.MifosMockStrutsTestCase;
 import org.mifos.framework.TestUtils;
 import org.mifos.framework.components.fieldConfiguration.util.helpers.FieldConfig;
@@ -73,8 +74,14 @@ import org.mifos.framework.struts.plugin.helper.EntityMasterData;
 import org.mifos.framework.util.helpers.Constants;
 import org.mifos.framework.util.helpers.SessionUtils;
 import org.mifos.framework.util.helpers.TestObjectFactory;
+import org.mifos.security.MifosUser;
 import org.mifos.security.util.SecurityConstants;
 import org.mifos.security.util.UserContext;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
 
 public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
     public GroupActionStrutsTest() throws Exception {
@@ -122,6 +129,12 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
         fieldConfig.init();
         getActionServlet().getServletContext().setAttribute(Constants.FIELD_CONFIGURATION,
                 fieldConfig.getEntityMandatoryFieldMap());
+
+        SecurityContext securityContext = new SecurityContextImpl();
+        MifosUser principal = new MifosUserBuilder().nonLoanOfficer().withAdminRole().build();
+        Authentication authentication = new TestingAuthenticationToken(principal, principal);
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
     }
 
     @Override
@@ -139,6 +152,12 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
      * If the user does not have right to create a group, the application must show a permission error (see MIFOS-3499)
      */
     public void testFailureCreate_WithoutPermissions() throws Exception {
+        SecurityContext securityContext = new SecurityContextImpl();
+        MifosUser principal = new MifosUserBuilder().build();
+        Authentication authentication = new TestingAuthenticationToken(principal, principal);
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
         createGroupWithCenter();
 
         UserContext userContext = TestUtils.makeUser();
@@ -215,7 +234,7 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
         if (!isCenterHierarchyExists) {
             Assert.assertNotNull(SessionUtils.getAttribute(CustomerConstants.LOAN_OFFICER_LIST, request));
         }
-        List<FeeDto> additionalFees = getFeesFromSession();
+        List<ApplicableAccountFeeDto> additionalFees = getFeesFromSession();
         Assert.assertNotNull(additionalFees);
         Assert.assertEquals(0, additionalFees.size());
         Assert.assertNotNull(SessionUtils.getAttribute(GroupConstants.CENTER_HIERARCHY_EXIST, request));
@@ -241,7 +260,7 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
         if (!isCenterHierarchyExists) {
             Assert.assertNotNull(SessionUtils.getAttribute(CustomerConstants.LOAN_OFFICER_LIST, request));
         }
-        List<FeeDto> additionalFees = getFeesFromSession();
+        List<ApplicableAccountFeeDto> additionalFees = getFeesFromSession();
         Assert.assertNotNull(additionalFees);
         Assert.assertEquals(1, additionalFees.size());
         Assert.assertNotNull(SessionUtils.getAttribute(GroupConstants.CENTER_HIERARCHY_EXIST, request));
@@ -369,13 +388,13 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
         addRequestParameter("method", "load");
         addRequestParameter("centerSystemId", center.getGlobalCustNum());
         actionPerform();
-        List<FeeDto> feeList = getFeesFromSession();
-        FeeDto fee = feeList.get(0);
+        List<ApplicableAccountFeeDto> feeList = getFeesFromSession();
+        ApplicableAccountFeeDto fee = feeList.get(0);
         setRequestPathInfo("/groupCustAction.do");
         addRequestParameter("method", "preview");
-        addRequestParameter("selectedFee[0].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[0].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[0].amount", "100");
-        addRequestParameter("selectedFee[1].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[1].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[1].amount", "150");
         addRequestParameter(Constants.CURRENTFLOWKEY, (String) request.getAttribute(Constants.CURRENTFLOWKEY));
         actionPerform();
@@ -394,11 +413,11 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
         addRequestParameter("method", "load");
         addRequestParameter("centerSystemId", center.getGlobalCustNum());
         actionPerform();
-        List<FeeDto> feeList = getFeesFromSession();
-        FeeDto fee = feeList.get(0);
+        List<ApplicableAccountFeeDto> feeList = getFeesFromSession();
+        ApplicableAccountFeeDto fee = feeList.get(0);
         setRequestPathInfo("/groupCustAction.do");
         addRequestParameter("method", "preview");
-        addRequestParameter("selectedFee[0].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[0].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[0].amount", "");
         addRequestParameter(Constants.CURRENTFLOWKEY, (String) request.getAttribute(Constants.CURRENTFLOWKEY));
         actionPerform();
@@ -418,8 +437,8 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
         addRequestParameter("centerSystemId", center.getGlobalCustNum());
         actionPerform();
 
-        List<FeeDto> feeList = getFeesFromSession();
-        FeeDto fee = feeList.get(0);
+        List<ApplicableAccountFeeDto> feeList = getFeesFromSession();
+        ApplicableAccountFeeDto fee = feeList.get(0);
 
         List<CustomFieldDto> customFieldDefs = getCustomFieldsFromSession();
 
@@ -435,7 +454,7 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
             addRequestParameter("customField[" + i + "].fieldValue", "11");
             i++;
         }
-        addRequestParameter("selectedFee[0].feeId", fee.getFeeId());
+        addRequestParameter("selectedFee[0].feeId", fee.getFeeId().toString());
         addRequestParameter("selectedFee[0].amount", fee.getAmount());
         actionPerform();
         Assert.assertEquals(0, getErrorSize());
@@ -449,8 +468,8 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
     }
 
     @SuppressWarnings("unchecked")
-    private List<FeeDto> getFeesFromSession() throws PageExpiredException {
-        return (List<FeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, request);
+    private List<ApplicableAccountFeeDto> getFeesFromSession() throws PageExpiredException {
+        return (List<ApplicableAccountFeeDto>) SessionUtils.getAttribute(CustomerConstants.ADDITIONAL_FEES_LIST, request);
     }
 
     public void testSuccessfulPrevious() throws Exception {
@@ -893,7 +912,7 @@ public class GroupActionStrutsTest extends MifosMockStrutsTestCase {
         group = TestObjectFactory.getGroup(Integer.valueOf(group.getCustomerId()).intValue());
         Assert.assertTrue(group.isTrained());
         Assert.assertEquals(newDisplayName, group.getDisplayName());
-        
+
     }
 
     public void testUpdateSuccessWithoutTrained() throws Exception {

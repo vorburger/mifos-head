@@ -1,9 +1,9 @@
-#. extracted from FieldUIResources.properties
+#. extracted from application/src/main/resources/org/mifos/config/localizedResources/FieldUIResources.properties
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-08-02 03:47+0800\n"
+"POT-Creation-Date: 2010-11-28 11:24+0530\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -78,7 +78,7 @@ msgstr "经营范围"
 
 #: Client.NumberOfChildren
 msgid "Number of Children"
-msgstr ""
+msgstr "儿女数目"
 
 #: Client.Citizenship
 msgid "Religion"
@@ -108,7 +108,7 @@ msgstr "外部ID"
 
 #: Client.FamilyDetails
 msgid "Family Details"
-msgstr ""
+msgstr "家庭细节"
 
 #: Client.GovernmentId
 msgctxt "Client.GovernmentId"
@@ -148,7 +148,7 @@ msgstr "第二姓氏"
 
 #: Client.SpouseFatherInformation
 msgid "Spouse/Father Information"
-msgstr ""
+msgstr "配偶/父亲资料"
 
 #: Client.SpouseFatherMiddleName
 msgid "Spouse/Father Middle Name"

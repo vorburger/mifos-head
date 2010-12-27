@@ -110,8 +110,6 @@ public interface NamedQueryConstants {
 
     // For client closedacc, changelog,fee details
     String VIEWALLSAVINGSCLOSEDACCOUNTS = "accounts.viewallsavingsclosedaccounts";
-    String VIEWALLCLOSEDACCOUNTS = "customer.viewallclosedaccounts";
-
     String GROUP_SEARCH_WITHOUT_CENTER = "group_SearchWithoutCenter";
     String GROUP_SEARCH_WITHOUT_CENTER_FOR_ADDING_GROUPMEMBER = "group_SearchWithoutCenterForAddingGroupMember";
 
@@ -409,6 +407,7 @@ public interface NamedQueryConstants {
     String SURVEYS_RETRIEVE_ALL = "surveys.retrieveAllSurveys";
     String RESPONSES_RETRIEVE_ALL = "surveys.retrieveAllResponses";
     String SURVEYS_RETRIEVE_BY_TYPE = "surveys.retrieveSurveysByType";
+    String SURVEYS_NON_PPI_RETRIEVE_BY_TYPE = "surveys.retrieveNonPPISurveysByType";
     String SURVEYS_RETRIEVE_BY_TYPE_AND_STATE = "surveys.retrieveSurveysByTypeAndState";
     String SURVEYS_RETRIEVE_BY_STATUS = "surveys.retrieveSurveysByStatus";
     String SURVEYS_RETRIEVE_ACTIVE_PPI = "surveys.retrieveActivePPISurvey";
@@ -490,9 +489,9 @@ public interface NamedQueryConstants {
     String SCHEDULED_TASK_GET_LATEST_TASK = "scheduledTasks.getLatestTask";
     String SCHEDULED_TASK_GET_SUCCESSFUL_TASK = "scheduledTasks.getSuccessfulTask";
 
-    // Imported transactions files
-    String GET_IMPORTED_FILES_BY_NAME = "importfiles.getImportedFileByName";
-
     // Insert CustomerCustomFieldEntity entries
     String INSERT_CUSTOMER_CUSTOM_FIELD_ENTITY = "CustomerCustomFieldEntity.insertEntries";
+
+    
+    String GET_ORIGINAL_SCHEDULE_BY_ACCOUNT_ID = "originalLoanScheduleEntity.getScheduleForLoan";
 }

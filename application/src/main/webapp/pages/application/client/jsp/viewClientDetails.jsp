@@ -1,5 +1,5 @@
 <%--
-Copyright (c) 2005-2009 Grameen Foundation USA
+Copyright (c) 2005-2010 Grameen Foundation USA
 All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -585,39 +585,6 @@ explanation of the license and how it is applied.
 										value="${clientInformationDto.address.phoneNumber}" />
 								</c:if></span> <br>
 						</c:if>
-						<tr>
-							<td height="23" colspan="2" class="fontnormalbold"><br>
-							<c:if test="${!empty clientInformationDto.customFields}">
-								<span class="fontnormalbold"> <mifos:mifoslabel
-									name="client.AdditionalInformationHeading"
-									bundle="ClientUIResources"></mifos:mifoslabel> </span>
-							<span class="fontnormal"> <br>
-							<c:forEach var="customField" items="${clientInformationDto.customFields}">
-										<c:choose>
-											<c:when test="${customField.fieldType == 3}"> <%-- FIXME: use a constant here instead --%>
-												<mifos:mifoslabel name="${customField.lookUpEntityType}"
-													bundle="CenterUIResources" isColonRequired="yes"></mifos:mifoslabel>
-									         		<span class="fontnormal"><c:out
-													value="${userdatefn:getUserLocaleDate(sessionScope.UserContext.preferredLocale,customField.fieldValue)}" />
-												</span>
-											</c:when>
-											<c:otherwise>
-												<mifos:mifoslabel name="${customField.lookUpEntityType}"
-													bundle="CenterUIResources" isColonRequired="yes"></mifos:mifoslabel>
-									         		<span class="fontnormal"><c:out
-													value="${customField.fieldValue}" /> </span>
-											</c:otherwise>
-										</c:choose>
-										<br>
-							</c:forEach> <br>
-							</span>
-							</c:if>
-							<span class="fontnormal">							
-							<!-- Bug Id 27210. Added code to pass the created date as parameter-->
-
-							
-							</span> </td>
-						</tr>
 					</table>
 					<!-- Family Details -->
 					<c:if test="${clientInformationDto.clientDisplay.areFamilyDetailsRequired}">

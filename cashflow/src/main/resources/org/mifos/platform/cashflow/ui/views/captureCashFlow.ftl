@@ -25,13 +25,17 @@
 <script type="text/javascript" src="pages/framework/js/CommonUtilities.js"></script>
 <script type="text/javascript" src="pages/cashflow/js/captureCashFlow.js"></script>
 <div class="content_panel">
-    <div id="allErrorsDiv" class="allErrorsDiv">
-        [@mifosmacros.showAllErrors "cashFlow.*"/]
-    </div>
     <form name="captureCashFlowForm" action="captureCashFlow.ftl?execution=${flowExecutionKey}" method="POST" id="captureCashFlowForm">
         <center>
 	        <fieldset id="cashFlows" style="width:85%;">
 	          <legend style="font-size:1em;">[@spring.message "cashflow.heading"/]</legend>
+              <div id="allErrorsDiv" class="allErrorsDiv" align="left">
+                [@mifosmacros.showAllErrors "cashFlow.*"/]
+              </div>
+              <div id="note" align="left" >
+	               <span class="indigo fontBold"> [@spring.message "cashFlowForm.message"/] </span>
+              </div>
+              <br/>
 	          <table class="table_common" border="0">
 	            <thead>
 	              <tr>
@@ -44,7 +48,7 @@
 	            <tbody>
 	                [#list cashFlow.monthlyCashFlows as monthlyCashFlow]
 	                <tr>
-	                    <td width="25%">[@spring.message monthlyCashFlow.monthInEnglish/] ${monthlyCashFlow.year?c}</td>
+	                    <td width="25%">${mifos.date_formatter(monthlyCashFlow.dateTime, "MMMM", Application.ConfigLocale.locale)} ${monthlyCashFlow.year?c}</td>
 	                    <td width="15%">[@spring.formInput "cashFlow.monthlyCashFlows[${monthlyCashFlow_index}].expense", 'maxlength="30" style="width:100%;" class="amount"' /]</td>
 	                    <td width="15%">[@spring.formInput "cashFlow.monthlyCashFlows[${monthlyCashFlow_index}].revenue", 'maxlength="30" style="width:100%;" class="amount"' /]</td>
 	                    <td width="45%">[@spring.formInput "cashFlow.monthlyCashFlows[${monthlyCashFlow_index}].notes", 'maxlength="300" style="width:100%;"' /]</td>
@@ -52,6 +56,18 @@
 	                [/#list]
 	            </tbody>
 	          </table>
+              [#if captureCapitalLiabilityInfo]
+                  <table>
+                      <tr>
+                          <td>[@spring.message "cashFlow.totalCapital"/]</td>
+                          <td>[@spring.formInput "cashFlow.totalCapital" ,'class="total-capital-liability"'/]</td>
+                      </tr>
+                      <tr>
+                          <td>[@spring.message "cashFlow.totalLiability"/]</td>
+                          <td>[@spring.formInput "cashFlow.totalLiability" ,'class="total-capital-liability"'/]</td>
+                      </tr>
+                  </table>
+              [/#if]
 	        </fieldset>
         <center>
         <div class="button_footer">

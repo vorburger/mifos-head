@@ -36,16 +36,23 @@ import org.mifos.customers.business.CustomerPositionEntity;
 import org.mifos.customers.business.PositionEntity;
 import org.mifos.customers.exceptions.CustomerException;
 import org.mifos.customers.struts.action.EditCustomerStatusAction;
-import org.mifos.customers.util.helpers.CustomerDetailDto;
-import org.mifos.customers.util.helpers.CustomerPositionDto;
 import org.mifos.customers.util.helpers.CustomerStatus;
+import org.mifos.domain.builders.MifosUserBuilder;
+import org.mifos.dto.domain.CustomerDetailDto;
+import org.mifos.dto.domain.CustomerPositionOtherDto;
 import org.mifos.framework.MifosMockStrutsTestCase;
 import org.mifos.framework.exceptions.PageExpiredException;
 import org.mifos.framework.hibernate.helper.StaticHibernateUtil;
 import org.mifos.framework.util.helpers.Constants;
 import org.mifos.framework.util.helpers.SessionUtils;
 import org.mifos.framework.util.helpers.TestObjectFactory;
+import org.mifos.security.MifosUser;
 import org.mifos.security.util.UserContext;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
 
 public class CustomerUIHelperFnStrutsTest extends MifosMockStrutsTestCase {
 
@@ -78,6 +85,12 @@ public class CustomerUIHelperFnStrutsTest extends MifosMockStrutsTestCase {
 
         flowKey = createFlow(request, EditCustomerStatusAction.class);
         addRequestParameter(Constants.CURRENTFLOWKEY, flowKey);
+
+        SecurityContext securityContext = new SecurityContextImpl();
+        MifosUser principal = new MifosUserBuilder().nonLoanOfficer().withAdminRole().build();
+        Authentication authentication = new TestingAuthenticationToken(principal, principal);
+        securityContext.setAuthentication(authentication);
+        SecurityContextHolder.setContext(securityContext);
     }
 
     @Override
@@ -108,9 +121,9 @@ public class CustomerUIHelperFnStrutsTest extends MifosMockStrutsTestCase {
         CustomerDetailDto clientDetail = new CustomerDetailDto(client.getCustomerId(), client.getDisplayName(), client
                 .getSearchId(), client.getGlobalCustNum());
 
-        List<CustomerPositionDto> customerPositions = new ArrayList<CustomerPositionDto>();
+        List<CustomerPositionOtherDto> customerPositions = new ArrayList<CustomerPositionOtherDto>();
         for (CustomerPositionEntity customerPosition : group.getCustomerPositions()) {
-            customerPositions.add(new CustomerPositionDto(customerPosition.getPosition().getName(), customerPosition
+            customerPositions.add(new CustomerPositionOtherDto(customerPosition.getPosition().getName(), customerPosition
                     .getCustomer().getCustomerId(), customerPosition.getCustomer().getDisplayName()));
         }
 
@@ -177,9 +190,9 @@ public class CustomerUIHelperFnStrutsTest extends MifosMockStrutsTestCase {
                 .getSearchId(), client.getGlobalCustNum());
 
 
-        List<CustomerPositionDto> customerPositions = new ArrayList<CustomerPositionDto>();
+        List<CustomerPositionOtherDto> customerPositions = new ArrayList<CustomerPositionOtherDto>();
         for (CustomerPositionEntity customerPosition : group.getCustomerPositions()) {
-            customerPositions.add(new CustomerPositionDto(customerPosition.getPosition().getName(), customerPosition
+            customerPositions.add(new CustomerPositionOtherDto(customerPosition.getPosition().getName(), customerPosition
                     .getCustomer().getCustomerId(), customerPosition.getCustomer().getDisplayName()));
         }
 

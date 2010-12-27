@@ -326,14 +326,40 @@ explanation of the license and how it is applied.
                                     <c:if test="${loanPrd.cashFlowCheckEnabled}">
                                         <tr>
                                             <td height="23" class="fontnormal">
-                                                <mifos:mifoslabel name="product.cashFlowWarningThreshold" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                                <mifos:mifoslabel name="product.cashFlowThreshold" bundle="ProductDefUIResources" isColonRequired="yes" />
                                                 <span class="fontnormal">
 	                                                <c:choose>
-		                                                <c:when test="${empty loanPrd.cashFlowCheckThreshold}">
+		                                                <c:when test="${empty loanPrd.cashFlowDetail.cashFlowThreshold}">
 		                                                    <mifos:mifoslabel name="product.notApplicable" bundle="ProductDefUIResources" />
 		                                                </c:when>
 		                                                <c:otherwise>
-	                                                  		<c:out value="${loanPrd.cashFlowCheckThreshold}" />
+	                                                  		<c:out value="${loanPrd.cashFlowDetail.cashFlowThreshold}" />
+		                                              		<mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
+		                                                </c:otherwise>
+		                                            </c:choose>
+                                                </span>
+                                                <br/>
+                                                <mifos:mifoslabel name="product.indebtednessRatio" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                                <span class="fontnormal">
+	                                                <c:choose>
+		                                                <c:when test="${empty loanPrd.cashFlowDetail.indebtednessRatio}">
+		                                                    <mifos:mifoslabel name="product.notApplicable" bundle="ProductDefUIResources" />
+		                                                </c:when>
+		                                                <c:otherwise>
+	                                                  		<c:out value="${loanPrd.cashFlowDetail.indebtednessRatio}" />
+		                                              		<mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
+		                                                </c:otherwise>
+		                                            </c:choose>
+                                                </span>
+                                                <br/>
+                                                <mifos:mifoslabel name="product.repaymentCapacity" bundle="ProductDefUIResources" isColonRequired="yes" />
+                                                <span class="fontnormal">
+	                                                <c:choose>
+		                                                <c:when test="${empty loanPrd.cashFlowDetail.repaymentCapacity}">
+		                                                    <mifos:mifoslabel name="product.notApplicable" bundle="ProductDefUIResources" />
+		                                                </c:when>
+		                                                <c:otherwise>
+	                                                  		<c:out value="${loanPrd.cashFlowDetail.repaymentCapacity}" />
 		                                              		<mifos:mifoslabel name="product.perc" bundle="ProductDefUIResources" />
 		                                                </c:otherwise>
 		                                            </c:choose>
@@ -341,7 +367,6 @@ explanation of the license and how it is applied.
                                               </td>
                                         </tr>
                                     </c:if>
-                                    
 
 									<tr>
 										<td height="23" class="fontnormalbold">

@@ -52,6 +52,9 @@ boolean isDisplay = (new ConfigurationPersistence().getConfigurationValueInteger
 				value="${session:getFromSession(sessionScope.flowManager,requestScope.currentFlowKey,'loanaccountownerisagroup')}"
 				var="loanaccountownerisagroup" />
 			<c:set
+				value="${session:getFromSession(sessionScope.flowManager,requestScope.currentFlowKey,'BusinessKey')}"
+				var="loanAccount" />
+			<c:set
 				value="${session:getFromSession(sessionScope.flowManager,requestScope.currentFlowKey,'loanInformationDto')}"
 				var="loanInformationDto" />
 			<c:set
@@ -265,18 +268,6 @@ boolean isDisplay = (new ConfigurationPersistence().getConfigurationValueInteger
 							<td colspan="4">&nbsp;</td>
 						</tr>
 					</table>
-					<c:if test="${loanInformationDto.disbursed}">
-                        <table width="96%" border="0" cellpadding="3" cellspacing="0">
-                            <tr>
-                                <td width="33%" class="headingorange">
-                                    <mifos:mifoslabel name="loan.installment_details" />
-                                </td>
-                            </tr>
-                        </table>
-					    <mifoscustom:mifostabletag source="installments" scope="session"
-                                               xmlFileName="ProposedRepaymentSchedule.xml"
-                                               moduleName="org/mifos/accounts/loan/util/resources" passLocale="true"/>
-                    </c:if>
 					<table width="96%" border="0" cellpadding="3" cellspacing="0">
 						<tr>
 							<td width="35%" class="headingorange"><c:if
@@ -626,7 +617,8 @@ boolean isDisplay = (new ConfigurationPersistence().getConfigurationValueInteger
 									</html-el:link><br>
 									</span>
 								</c:when>
-							</c:choose> <c:choose>
+							</c:choose>
+							<c:choose>
 								<c:when
 									test="${loanInformationDto.accountStateId==3 || loanInformationDto.accountStateId==4}">
 									<tr>
@@ -752,9 +744,8 @@ boolean isDisplay = (new ConfigurationPersistence().getConfigurationValueInteger
 						<tr>
 							<td class="paddingL10"><c:choose>
 								<c:when
-									test="${!empty loanInformationDto.recentAccountNotes}">
-									<c:forEach var="note"
-										items="${loanInformationDto.recentAccountNotes}">
+									test="${!empty loanAccount.recentAccountNotes}">
+									<c:forEach var="note" items="${loanAccount.recentAccountNotes}">
 										<span class="fontnormal8ptbold"> <c:out
 											value="${userdatefn:getUserLocaleDate(sessionScope.UserContext.preferredLocale,note.commentDate)}" />:</span>
 										<span class="fontnormal8pt"> <c:out
@@ -773,7 +764,7 @@ boolean isDisplay = (new ConfigurationPersistence().getConfigurationValueInteger
 						<tr>
 							<td align="right" class="paddingleft05"><span
 								class="fontnormal8pt"> <c:if
-								test="${!empty loanInformationDto.recentAccountNotes}">
+								test="${!empty loanAccount.recentAccountNotes}">
 								<html-el:link styleId="loanaccountdetail.link.seeAllNotes"
 									href="notesAction.do?method=search&accountId=${loanInformationDto.accountId}&globalAccountNum=${loanInformationDto.globalAccountNum}&accountTypeId=${loanInformationDto.accountTypeId}&currentFlowKey=${requestScope.currentFlowKey}&randomNUm=${sessionScope.randomNUm}">
 									<mifos:mifoslabel name="loan.seeallnotes" />

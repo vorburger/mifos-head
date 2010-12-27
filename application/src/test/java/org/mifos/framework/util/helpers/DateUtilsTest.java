@@ -55,6 +55,31 @@ public class DateUtilsTest extends TestCase {
         Locale.setDefault(savedDefaultLocale);
     }
 
+    public void testEqualMonthYear() {
+        Date first = new Date(2010, 11, 20);
+        Date second = new Date(2010, 11, 20);
+        Assert.assertTrue(DateUtils.sameMonthYear(first, second));
+
+        first = new Date(2010, 11, 20);
+        second = new Date(2010, 11, 10);
+        Assert.assertTrue(DateUtils.sameMonthYear(first, second));
+
+        first = new Date(2010, 11, 10);
+        second = new Date(2010, 11, 20);
+        Assert.assertTrue(DateUtils.sameMonthYear(first, second));
+
+        first = new Date(2010, 11, 20);
+        second = new Date(2010, 10, 20);
+        Assert.assertFalse(DateUtils.sameMonthYear(first, second));
+
+        first = new Date(2010, 11, 20);
+        second = new Date(2011, 11, 20);
+        Assert.assertFalse(DateUtils.sameMonthYear(first, second));
+    }
+
+
+
+
     public void testConvertDbToUserFmt() throws InvalidDateException {
         Locale.setDefault(new Locale("en","GB"));
         DateUtils.convertDbToUserFmt("2009-01-26", "dd/MM/yyyy");
@@ -251,8 +276,9 @@ public class DateUtilsTest extends TestCase {
         }
     }
 
-    private Date getDate(int year, int month, int day) {
-        return DateUtils.getDateWithoutTimeStamp((new GregorianCalendar(year, month, day)).getTime());
+    public void testShortDate(){
+        String shortDateFormat = DateUtils.getShortDateFormat(new Locale("en", "GB"));
+        assertEquals("dd-MMM-yyyy",shortDateFormat);
     }
 
 }

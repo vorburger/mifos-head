@@ -20,15 +20,15 @@
 
 package org.mifos.accounts.loan.util.helpers;
 
-import org.mifos.application.master.business.MifosCurrency;
-import org.mifos.framework.util.helpers.DateUtils;
-import org.mifos.framework.util.helpers.Money;
-
 import java.io.Serializable;
-import java.text.DateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+
+import org.joda.time.LocalDate;
+import org.mifos.application.master.business.MifosCurrency;
+import org.mifos.framework.util.helpers.DateUtils;
+import org.mifos.framework.util.helpers.Money;
 
 public class RepaymentScheduleInstallment implements Serializable {
 
@@ -56,6 +56,13 @@ public class RepaymentScheduleInstallment implements Serializable {
 
     private String dateFormat;
 
+    public static RepaymentScheduleInstallment createForScheduleCopy(Integer installmentNumber, String principal, String interest, LocalDate dueDate, Locale locale, MifosCurrency currency) {
+        Money feess = null;
+        Money miscFeess = null;
+        Money miscPenaltys = null;
+        return new RepaymentScheduleInstallment(installmentNumber, new java.sql.Date(dueDate.toDateMidnight().toDate().getTime()), new Money(currency, principal), new Money(currency, interest), feess, miscFeess, miscPenaltys, locale);
+    }
+
     public RepaymentScheduleInstallment(int installment, Date dueDateValue, Money principal, Money interest, Money fees,
                                         Money miscFees, Money miscPenalty, Locale locale) {
         this.installment = installment;
@@ -66,7 +73,7 @@ public class RepaymentScheduleInstallment implements Serializable {
         this.miscPenalty = miscPenalty;
         setTotalAndTotalValue(this.principal.add(this.interest).add(this.fees).add(this.miscFees).add(this.miscPenalty));
         this.locale = locale;
-        this.dateFormat = computeDateFormat(this.locale);
+        this.dateFormat = DateUtils.getShortDateFormat(this.locale);
         this.dueDateValue = dueDateValue;
         this.dueDate = DateUtils.getDBtoUserFormatString(dueDateValue, locale);
     }
@@ -74,12 +81,7 @@ public class RepaymentScheduleInstallment implements Serializable {
     @Deprecated
     public RepaymentScheduleInstallment(Locale locale) {
         this.locale = locale;
-        this.dateFormat = computeDateFormat(locale);
-    }
-
-    private String computeDateFormat(Locale locale) {
-        String dateSeparator = DateUtils.getDateSeparatorByLocale(locale, DateFormat.MEDIUM);
-        return String.format("dd%sMMM%syyyy", dateSeparator, dateSeparator);
+        this.dateFormat = DateUtils.getShortDateFormat(locale);
     }
 
     public void setInstallment(Integer installment) {
@@ -99,8 +101,11 @@ public class RepaymentScheduleInstallment implements Serializable {
     }
 
     public void setFees(Money fees) {
-        if (this.fees == null) this.fees = fees;
-        else this.fees = this.fees.add(fees);
+        if (this.fees == null) {
+            this.fees = fees;
+        } else {
+            this.fees = this.fees.add(fees);
+        }
     }
 
     public Integer getInstallment() {
@@ -180,7 +185,9 @@ public class RepaymentScheduleInstallment implements Serializable {
     }
 
     public Calendar getDueDateValueAsCalendar() {
-        if (dueDateValue == null) return null;
+        if (dueDateValue == null) {
+            return null;
+        }
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(dueDateValue);
         return calendar;
@@ -197,7 +204,9 @@ public class RepaymentScheduleInstallment implements Serializable {
     }
 
     public boolean isTotalAmountInValid() {
-        if (totalValue == null) return true;
+        if (totalValue == null) {
+            return true;
+        }
         if (interest != null && fees != null) {
             Money minPayable = interest.add(fees);
             return totalValue.compareTo(minPayable) < 0;
