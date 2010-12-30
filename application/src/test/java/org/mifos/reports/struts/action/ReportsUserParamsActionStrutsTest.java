@@ -20,6 +20,8 @@
 
 package org.mifos.reports.struts.action;
 
+import java.io.IOException;
+
 import junit.framework.Assert;
 
 import org.mifos.framework.MifosMockStrutsTestCase;
@@ -39,7 +41,7 @@ public class ReportsUserParamsActionStrutsTest extends MifosMockStrutsTestCase {
     private UserContext userContext;
 
     @Override
-    protected void setStrutsConfig() {
+    protected void setStrutsConfig() throws IOException {
         super.setStrutsConfig();
         setConfigFile("/WEB-INF/struts-config.xml,/WEB-INF/reports-struts-config.xml");
     }

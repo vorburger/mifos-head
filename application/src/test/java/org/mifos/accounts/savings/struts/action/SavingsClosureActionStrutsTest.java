@@ -20,6 +20,7 @@
 
 package org.mifos.accounts.savings.struts.action;
 
+import java.io.IOException;
 import java.util.Date;
 
 import junit.framework.Assert;
@@ -83,7 +84,7 @@ public class SavingsClosureActionStrutsTest extends MifosMockStrutsTestCase {
     private String flowKey;
 
     @Override
-    protected void setStrutsConfig() {
+    protected void setStrutsConfig() throws IOException {
         super.setStrutsConfig();
         setConfigFile("/WEB-INF/struts-config.xml,/WEB-INF/accounts-struts-config.xml");
     }

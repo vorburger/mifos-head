@@ -44,6 +44,7 @@ import org.mifos.framework.util.helpers.*;
 import org.mifos.security.util.ActivityContext;
 import org.mifos.security.util.UserContext;
 
+import java.io.IOException;
 import java.sql.Date;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -69,7 +70,7 @@ public class LoanPrdActionStrutsTest extends MifosMockStrutsTestCase {
     private FeeBO fee;
 
     @Override
-    protected void setStrutsConfig() {
+    protected void setStrutsConfig() throws IOException {
         super.setStrutsConfig();
         setConfigFile("/WEB-INF/struts-config.xml,/WEB-INF/productdefinition-struts-config.xml");
     }
