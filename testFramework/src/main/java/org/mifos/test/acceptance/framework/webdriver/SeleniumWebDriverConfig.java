@@ -22,7 +22,7 @@ package org.mifos.test.acceptance.framework.webdriver;
 
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverBackedSelenium;
-import org.openqa.selenium.firefox.FirefoxDriver;
+// import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
