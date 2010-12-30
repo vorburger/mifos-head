@@ -33,6 +33,8 @@ import org.mifos.framework.util.StandardTestingService;
 import org.mifos.framework.util.helpers.*;
 import org.mifos.security.MifosUser;
 import org.mifos.service.test.TestMode;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -44,6 +46,7 @@ import servletunit.struts.MockStrutsTestCase;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.io.File;
+import java.io.IOException;
 import java.util.Calendar;
 import java.util.Enumeration;
 import java.util.GregorianCalendar;
@@ -73,14 +76,22 @@ public class MifosMockStrutsTestCase extends MockStrutsTestCase {
 
     private boolean strutsConfigSet = false;
 
-    protected void setStrutsConfig() {
-        /*
+    protected void setStrutsConfig() throws IOException {
+        /* 
          * Add a pointer to the context directory so that the web.xml file can
          * be located when running test cases using the junit plugin inside
-         * eclipse.
+         * Eclipse.
+         * 
+         * Find the Web Resources dir (where WEB-INF lives) via Classpath, not
+         * hard-coded filenames.
          */
-        setContextDirectory(new File("application/target/test-classes"));
-
+    	Resource r = new ClassPathResource("/WEB-INF/struts-config.xml");
+    	if (!r.exists() || !r.isReadable()) {
+    		fail(r.getDescription() + " does not exist or is not readable");
+    	}
+    	File webResourcesDirectory = r.getFile().getParentFile().getParentFile();
+    	setContextDirectory(webResourcesDirectory);
+    	
         setConfigFile("/WEB-INF/struts-config.xml,/WEB-INF/other-struts-config.xml");
     }
 

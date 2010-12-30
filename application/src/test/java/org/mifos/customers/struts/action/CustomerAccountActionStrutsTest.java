@@ -20,6 +20,8 @@
 
 package org.mifos.customers.struts.action;
 
+import java.io.IOException;
+
 import junit.framework.Assert;
 
 import org.mifos.application.meeting.business.MeetingBO;
@@ -52,7 +54,7 @@ public class CustomerAccountActionStrutsTest extends MifosMockStrutsTestCase {
     private UserContext userContext;
 
     @Override
-    protected void setStrutsConfig() {
+    protected void setStrutsConfig() throws IOException {
         super.setStrutsConfig();
         setConfigFile("/WEB-INF/struts-config.xml,/WEB-INF/customer-struts-config.xml");
     }
