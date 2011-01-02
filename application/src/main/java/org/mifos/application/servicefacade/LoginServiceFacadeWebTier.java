@@ -20,23 +20,32 @@
 
 package org.mifos.application.servicefacade;
 
+import java.util.Locale;
+
+import org.mifos.accounts.servicefacade.UserContextFactory;
+import org.mifos.config.Localization;
+import org.mifos.core.MifosRuntimeException;
 import org.mifos.customers.personnel.business.PersonnelBO;
 import org.mifos.customers.personnel.business.service.PersonnelService;
-import org.mifos.customers.personnel.exceptions.PersonnelException;
 import org.mifos.customers.personnel.persistence.PersonnelDao;
 import org.mifos.dto.domain.ChangePasswordRequest;
-import org.mifos.framework.exceptions.ApplicationException;
+import org.mifos.dto.domain.LoginDto;
+import org.mifos.framework.hibernate.helper.HibernateTransactionHelper;
+import org.mifos.framework.hibernate.helper.HibernateTransactionHelperForStaticHibernateUtil;
+import org.mifos.security.MifosUser;
 import org.mifos.security.login.util.helpers.LoginConstants;
-import org.mifos.security.util.ActivityContext;
 import org.mifos.security.util.UserContext;
+import org.mifos.service.BusinessRuleException;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  *
  */
-public class LoginServiceFacadeWebTier implements LegacyLoginServiceFacade, NewLoginServiceFacade {
+public class LoginServiceFacadeWebTier implements NewLoginServiceFacade {
 
     private final PersonnelService personnelService;
     private final PersonnelDao personnelDao;
+    private HibernateTransactionHelper transactionHelper = new HibernateTransactionHelperForStaticHibernateUtil();
 
     public LoginServiceFacadeWebTier(PersonnelService personnelService, PersonnelDao personnelDao) {
         this.personnelService = personnelService;
@@ -44,20 +53,41 @@ public class LoginServiceFacadeWebTier implements LegacyLoginServiceFacade, NewL
     }
 
     @Override
-    public LoginActivityDto login(String username, String password) throws ApplicationException {
+    public LoginDto login(String username, String password) {
 
         PersonnelBO user = this.personnelDao.findPersonnelByUsername(username);
         if (user == null) {
-            throw new ApplicationException(LoginConstants.KEYINVALIDUSER);
+            throw new BusinessRuleException(LoginConstants.KEYINVALIDUSER);
         }
 
-        try {
-            UserContext userContext = user.login(password);
-            ActivityContext activityContext = new ActivityContext(Short.valueOf("0"), user.getOffice().getOfficeId(), user.getPersonnelId());
+        Locale preferredLocale = Localization.getInstance().getConfiguredLocale();
+        Short localeId = Localization.getInstance().getLocaleId();
+        UserContext userContext = new UserContext(preferredLocale, localeId);
+        userContext.setId(user.getPersonnelId());
+        userContext.setName(user.getDisplayName());
+        userContext.setLevel(user.getLevelEnum());
+        userContext.setRoles(user.getRoles());
+        userContext.setLastLogin(user.getLastLogin());
+        userContext.setPasswordChanged(user.getPasswordChanged());
+        userContext.setBranchId(user.getOffice().getOfficeId());
+        userContext.setBranchGlobalNum(user.getOffice().getGlobalOfficeNum());
+        userContext.setOfficeLevelId(user.getOffice().getLevel().getId());
 
-            return new LoginActivityDto(userContext, activityContext, user.getPasswordChanged());
-        } catch (PersonnelException e) {
-            throw new ApplicationException(e.getKey());
+
+        user.updateDetails(userContext);
+        try {
+            this.transactionHelper.startTransaction();
+            this.transactionHelper.beginAuditLoggingFor(user);
+            user.login(password);
+            this.personnelDao.save(user);
+            this.transactionHelper.commitTransaction();
+
+            return new LoginDto(user.getPersonnelId(), user.getOffice().getOfficeId(), user.isPasswordChanged());
+        } catch (Exception e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new MifosRuntimeException(e);
+        } finally {
+            this.transactionHelper.closeSession();
         }
     }
 
@@ -66,5 +96,31 @@ public class LoginServiceFacadeWebTier implements LegacyLoginServiceFacade, NewL
         PersonnelBO user = this.personnelDao.findPersonnelByUsername(changePasswordRequest.getUsername());
 
         this.personnelService.changePassword(user, changePasswordRequest.getNewPassword());
+    }
+
+    @Override
+    public boolean updatePassword(String username, String oldPassword, String newPassword) {
+
+        MifosUser appUser = (MifosUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserContext userContext = new UserContextFactory().create(appUser);
+
+        PersonnelBO user = this.personnelDao.findPersonnelByUsername(username);
+        boolean passwordIsAlreadyChanged = user.isPasswordChanged();
+
+        user.updateDetails(userContext);
+        try {
+            this.transactionHelper.startTransaction();
+            this.transactionHelper.beginAuditLoggingFor(user);
+            user.updatePassword(oldPassword, newPassword);
+            this.personnelDao.save(user);
+            this.transactionHelper.commitTransaction();
+        } catch (Exception e) {
+            this.transactionHelper.rollbackTransaction();
+            throw new MifosRuntimeException(e);
+        } finally {
+            this.transactionHelper.closeSession();
+        }
+
+        return passwordIsAlreadyChanged;
     }
 }

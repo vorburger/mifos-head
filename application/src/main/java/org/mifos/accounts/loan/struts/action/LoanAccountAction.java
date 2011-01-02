@@ -20,54 +20,6 @@
 
 package org.mifos.accounts.loan.struts.action;
 
-import static org.apache.commons.lang.StringUtils.isNotBlank;
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.ADDITIONAL_FEES_LIST;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.ADMINISTRATIVE_DOCUMENT_IS_ENABLED;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.CLIENT_LIST;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.CUSTOM_FIELDS;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOANACCOUNTOWNER;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOANFUNDS;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOANOFFERING;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOAN_ACCOUNT_OWNER_IS_A_GROUP;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOAN_ALL_ACTIVITY_VIEW;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOAN_INDIVIDUAL_MONITORING_IS_ENABLED;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.MAX_DAYS_BETWEEN_DISBURSAL_AND_FIRST_REPAYMENT_DAY;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.MAX_RANGE_IS_NOT_MET;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.METHODCALLED;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.MIN_DAYS_BETWEEN_DISBURSAL_AND_FIRST_REPAYMENT_DAY;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.MIN_RANGE_IS_NOT_MET;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.NEXTMEETING_DATE;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.PERSPECTIVE_VALUE_REDO_LOAN;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.PROPOSED_DISBURSAL_DATE;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.RECURRENCEID;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.RECURRENCENAME;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.STATUS_HISTORY;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.TOTAL_AMOUNT_OVERDUE;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.VIEWINSTALLMENTDETAILS_SUCCESS;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.VIEW_OVERDUE_INSTALLMENT_DETAILS;
-import static org.mifos.accounts.loan.util.helpers.LoanConstants.VIEW_UPCOMING_INSTALLMENT_DETAILS;
-import static org.mifos.accounts.loan.util.helpers.RequestConstants.PERSPECTIVE;
-import static org.mifos.framework.util.helpers.Constants.BUSINESS_KEY;
-
-import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
-import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 import org.apache.commons.lang.StringUtils;
@@ -192,6 +144,53 @@ import org.mifos.security.util.SecurityConstants;
 import org.mifos.security.util.UserContext;
 import org.mifos.service.BusinessRuleException;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+import static org.apache.commons.lang.StringUtils.isNotBlank;
+import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.ADDITIONAL_FEES_LIST;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.ADMINISTRATIVE_DOCUMENT_IS_ENABLED;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.CLIENT_LIST;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.CUSTOM_FIELDS;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOANACCOUNTOWNER;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOANFUNDS;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOANOFFERING;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOAN_ACCOUNT_OWNER_IS_A_GROUP;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOAN_ALL_ACTIVITY_VIEW;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.LOAN_INDIVIDUAL_MONITORING_IS_ENABLED;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.MAX_DAYS_BETWEEN_DISBURSAL_AND_FIRST_REPAYMENT_DAY;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.MAX_RANGE_IS_NOT_MET;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.METHODCALLED;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.MIN_DAYS_BETWEEN_DISBURSAL_AND_FIRST_REPAYMENT_DAY;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.MIN_RANGE_IS_NOT_MET;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.NEXTMEETING_DATE;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.PERSPECTIVE_VALUE_REDO_LOAN;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.PROPOSED_DISBURSAL_DATE;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.RECURRENCEID;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.RECURRENCENAME;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.STATUS_HISTORY;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.TOTAL_AMOUNT_OVERDUE;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.VIEWINSTALLMENTDETAILS_SUCCESS;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.VIEW_OVERDUE_INSTALLMENT_DETAILS;
+import static org.mifos.accounts.loan.util.helpers.LoanConstants.VIEW_UPCOMING_INSTALLMENT_DETAILS;
+import static org.mifos.accounts.loan.util.helpers.RequestConstants.PERSPECTIVE;
+import static org.mifos.framework.util.helpers.Constants.BUSINESS_KEY;
+
 /**
  * Creation and management of loan accounts.
  * <p/>
@@ -280,7 +279,7 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
     private QuestionnaireFlowAdapter createLoanQuestionnaire;
     private CashFlowAdaptor cashFlowAdaptor =
             new CashFlowAdaptor(ActionForwards.capture_cash_flow.toString(), new DefaultCashFlowServiceLocator());
-
+    private CashFlowDataAdaptor cashFlowDataAdaptor = new CashFlowDataAdaptor();
     private static final String SHOW_PREVIEW = "loanAccountAction.do?method=showPreview";
     private static final String CUSTOMER_SEARCH_URL = "custSearchAction.do?method=loadMainSearch";
 
@@ -305,7 +304,11 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
         this.configurationPersistence = configurationPersistence;
         this.questionGroupFilter = new QuestionGroupFilterForLoan();
         this.questionnaireServiceFacadeLocator = new DefaultQuestionnaireServiceFacadeLocator();
-        this.createLoanQuestionnaire = new QuestionnaireFlowAdapter("Create", "Loan", ActionForwards.schedulePreview_success,
+        this.createLoanQuestionnaire = getCreateLoanQuestionnaire();
+    }
+
+    QuestionnaireFlowAdapter getCreateLoanQuestionnaire() {
+        return new QuestionnaireFlowAdapter("Create", "Loan", ActionForwards.schedulePreview_success,
                 "custSearchAction.do?method=loadMainSearch", questionnaireServiceFacadeLocator, questionGroupFilter);
     }
 
@@ -540,16 +543,14 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
             throws Exception {
 
         LoanAccountActionForm loanActionForm = (LoanAccountActionForm) form;
-
         boolean validateInstallmentsPassed = validateInstallments(request, loanActionForm);
-
-        boolean cashFlowBounded = bindCashFlowIfPresent(request, loanActionForm);
+        boolean cashFlowBounded = bindCashFlowIfPresent(request, loanActionForm, false);
 
         ActionForwards forward = ActionForwards.validateInstallments_failure;
         if (validateInstallmentsPassed && cashFlowBounded) {
             forward = validateCashFlowForWarningAndErrors(loanActionForm, request, loanActionForm, ActionForwards.validateInstallments_success, ActionForwards.validateInstallments_failure);
-
         }
+        
         return mapping.findForward(forward.name());
     }
 
@@ -616,11 +617,11 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
         setPerspectiveOnRequest(request);
         ActionForward forwardAfterCashFlowBinding = cashFlowAdaptor.bindCashFlow((CashFlowCaptor) form,
                 ActionForwards.schedulePreview_success.toString(), request.getSession(), mapping);
-        bindCashFlowIfPresent(request, form);
+        bindCashFlowIfPresent(request, form, true);
         return forwardAfterCashFlowBinding;
     }
 
-    private boolean bindCashFlowIfPresent(final HttpServletRequest request, final ActionForm form) throws Exception {
+    private boolean bindCashFlowIfPresent(final HttpServletRequest request, final ActionForm form, boolean addLoanAmountToCashFlow) throws Exception {
         boolean cashFlowBound = false;
 
         UserContext userContext = getUserContext(request);
@@ -628,14 +629,14 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
         LoanOfferingBO loanOffering = getLoanOffering(loanForm.getPrdOfferingIdValue(), userContext.getLocaleId());
 
         if (loanOffering != null && isCashFlowEnabled(request, loanOffering)) {
-            CashFlowDataAdaptor cashflowUtility = new CashFlowDataAdaptor(
+            cashFlowDataAdaptor.initialize(
                     loanForm.getInstallments(),
                     loanForm.getCashFlowForm().getMonthlyCashFlows(),
                     loanForm.getLoanAmountAsBigDecimal(),
                     loanForm.getDisbursementDateValue(userContext.getPreferredLocale()),
-                    userContext.getPreferredLocale());
-
-            loanForm.setCashflowDataDtos(cashflowUtility.getCashflowDataDtos());
+                    userContext.getPreferredLocale(),
+                    addLoanAmountToCashFlow);
+            loanForm.setCashflowDataDtos(cashFlowDataAdaptor.getCashflowDataDtos());
             cashFlowBound = true;
         }
         return cashFlowBound;
@@ -935,9 +936,7 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
 
     private void setPerspectiveOnRequest(HttpServletRequest request) {
         String perspective = request.getParameter(PERSPECTIVE);
-        if (perspective != null) {
-            request.setAttribute(PERSPECTIVE, perspective);
-        }
+        setPerspective(request, perspective);
     }
 
     private CustomerDetailDto getCustomer(HttpServletRequest request) throws PageExpiredException {
@@ -963,9 +962,10 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
         boolean isInstallmentValid = validateInstallments(request, loanAccountForm);
         String perspective = loanAccountForm.getPerspective();
         if (perspective != null) {
+            setPerspective(request, perspective);
             Integer customerId = loanAccountForm.getCustomerIdValue();
 
-            if (perspective.equals(PERSPECTIVE_VALUE_REDO_LOAN)) {
+            if (perspective.equals(PERSPECTIVE_VALUE_REDO_LOAN) && isInstallmentValid) {
                 UserContext userContext = getUserContext(request);
                 DateTime disbursementDate = getDisbursementDate(loanAccountForm, userContext.getPreferredLocale());
 
@@ -1001,12 +1001,17 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
                     SessionUtils.setCollectionAttribute("loanAccountDetailsView", loanPreviewDto.getLoanAccountDetailsView(), request);
                 }
             }
-            request.setAttribute(PERSPECTIVE, perspective);
         }
         // TODO need to figure out a way to avoid putting 'installments' onto session - required for mifostabletag in createloanpreview.jsp
         setInstallmentsOnSession(request, loanAccountForm);
         ActionForwards forward = validateCashFlow(form, request, loanAccountForm, isInstallmentValid);
         return mapping.findForward(forward.name());
+    }
+
+    private void setPerspective(HttpServletRequest request, String perspective) {
+        if (perspective != null) {
+            request.setAttribute(PERSPECTIVE, perspective);
+        }
     }
 
     private LoanBO redoLoan(CustomerBO customer, LoanAccountActionForm loanAccountActionForm, DateTime disbursementDate, UserContext userContext) {
@@ -1088,8 +1093,8 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
         }
     }
 
-    private List<RepaymentScheduleInstallment> getInstallmentFromPaymentDataBeans(Collection<PaymentDataHtmlBean> paymentDataBeans) {
-        return (List<RepaymentScheduleInstallment>) org.mifos.framework.util.CollectionUtils.collect(paymentDataBeans,
+    private List<RepaymentScheduleInstallment> getInstallmentFromPaymentDataBeans(List<PaymentDataHtmlBean> paymentDataBeans) {
+        return org.mifos.framework.util.CollectionUtils.collect(paymentDataBeans,
                 new Transformer<PaymentDataHtmlBean, RepaymentScheduleInstallment>() {
                     @Override
                     public RepaymentScheduleInstallment transform(PaymentDataHtmlBean input) {
@@ -1104,7 +1109,7 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
                 ActionForwards.preview_success :
                 ActionForwards.preview_failure;
 
-        boolean cashFlowBounded = bindCashFlowIfPresent(request, loanAccountForm);
+        boolean cashFlowBounded = bindCashFlowIfPresent(request, loanAccountForm, false);
         //----to display errors on second page
         if (forward.equals(ActionForwards.preview_success) && cashFlowBounded) {
             forward = validateCashFlowForWarningAndErrors(form, request, loanAccountForm, ActionForwards.preview_success, ActionForwards.preview_failure);
@@ -1357,7 +1362,7 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
         LoanAccountActionForm loanAccountForm = (LoanAccountActionForm) form;
         String perspective = loanAccountForm.getPerspective();
         if (perspective != null) {
-            request.setAttribute(PERSPECTIVE, perspective);
+            setPerspective(request, perspective);
         }
         ActionForwards actionForward = null;
         String method = (String) request.getAttribute(METHODCALLED);
@@ -1480,23 +1485,31 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
     }
 
     private LoanCreationResultDto getCreateLoanResult(LoanAccountActionForm loanActionForm, LoanAccountMeetingDto loanAccountMeetingDto, LoanAccountInfoDto loanAccountInfo) {
-        LoanCreationResultDto loanCreationResultDto;List<LoanScheduledInstallmentDto> loanRepayments = new ArrayList<LoanScheduledInstallmentDto>();
         List<RepaymentScheduleInstallment> installments = loanActionForm.getInstallments();
+        return loanAccountServiceFacade.createLoan(loanAccountMeetingDto, loanAccountInfo, getLoanScheduleInstallmentDtos(installments));
+    }
+
+    private List<LoanScheduledInstallmentDto> getLoanScheduleInstallmentDtos(List<RepaymentScheduleInstallment> installments) {
+        List<LoanScheduledInstallmentDto> loanRepayments = new ArrayList<LoanScheduledInstallmentDto>();
         for (RepaymentScheduleInstallment installment : installments) {
             LoanScheduledInstallmentDto repaymentInstallment = new LoanScheduledInstallmentDto(installment.getInstallment(), installment.getPrincipal().toString(), installment.getInterest().toString(), new LocalDate(installment.getDueDateValue()));
             loanRepayments.add(repaymentInstallment);
         }
-        loanCreationResultDto = this.loanAccountServiceFacade.createLoan(loanAccountMeetingDto, loanAccountInfo, loanRepayments);
-        return loanCreationResultDto;
+        return loanRepayments;
     }
 
     private LoanCreationResultDto getLoanCreationResultForRedo(LoanAccountActionForm loanActionForm, LoanAccountMeetingDto loanAccountMeetingDto, LoanAccountInfoDto loanAccountInfo) throws InvalidDateException {
         LoanCreationResultDto loanCreationResultDto;List<LoanPaymentDto> loanRepayments = new ArrayList<LoanPaymentDto>();
         List<PaymentDataHtmlBean> paymentBeans = loanActionForm.getPaymentDataBeans();
         for (PaymentDataHtmlBean existingPayment : paymentBeans) {
-            loanRepayments.add(new LoanPaymentDto(existingPayment.getAmount(), new LocalDate(existingPayment.getTransactionDate()), existingPayment.getPaymentTypeId().longValue(), existingPayment.getPersonnel().getPersonnelId()));
+            LoanPaymentDto loanPaymentDto = new LoanPaymentDto(existingPayment.getAmount(),
+                    new LocalDate(existingPayment.getTransactionDate()),
+                    existingPayment.getPaymentTypeId().longValue(),
+                    existingPayment.getPersonnel().getPersonnelId());
+            loanRepayments.add(loanPaymentDto);
         }
-        loanCreationResultDto = this.loanAccountServiceFacade.redoLoan(loanAccountMeetingDto, loanAccountInfo, loanRepayments);
+        List<LoanScheduledInstallmentDto> installmentDtos = getLoanScheduleInstallmentDtos(getInstallmentFromPaymentDataBeans(paymentBeans));
+        loanCreationResultDto = loanAccountServiceFacade.redoLoan(loanAccountMeetingDto, loanAccountInfo, loanRepayments, installmentDtos);
         return loanCreationResultDto;
     }
 
@@ -2106,7 +2119,7 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
     private void storeRedoLoanSettingOnRequestForUseInJspIfPerspectiveParamaterOnQueryString(
             final HttpServletRequest request) {
         if (request.getParameter(PERSPECTIVE) != null) {
-            request.setAttribute(PERSPECTIVE, request.getParameter(PERSPECTIVE));
+            setPerspective(request, request.getParameter(PERSPECTIVE));
         }
     }
 
@@ -2141,17 +2154,18 @@ public class LoanAccountAction extends AccountAppAction implements Questionnaire
 
     @TransactionDemarcate(joinToken = true)
     @Override
-    public ActionForward captureQuestionResponses(
-            final ActionMapping mapping, final ActionForm form, final HttpServletRequest request,
-            @SuppressWarnings("unused") final HttpServletResponse response) throws Exception {
+    public ActionForward captureQuestionResponses(final ActionMapping mapping, final ActionForm form, 
+                         final HttpServletRequest request, @SuppressWarnings("unused") final HttpServletResponse response)
+                         throws Exception {
         request.setAttribute(METHODCALLED, "captureQuestionResponses");
-        ActionErrors errors = createLoanQuestionnaire.validateResponses(request, (LoanAccountActionForm) form);
+        LoanAccountActionForm actionForm = (LoanAccountActionForm) form;
+        setPerspective(request, actionForm.getPerspective());
+        ActionErrors errors = createLoanQuestionnaire.validateResponses(request, actionForm);
         if (errors != null && !errors.isEmpty()) {
             addErrors(request, errors);
             return mapping.findForward(ActionForwards.captureQuestionResponses.toString());
         }
-        ActionForward join = createLoanQuestionnaire.rejoinFlow(mapping);
-        return join;
+        return createLoanQuestionnaire.rejoinFlow(mapping);
     }
 
     @TransactionDemarcate(joinToken = true)

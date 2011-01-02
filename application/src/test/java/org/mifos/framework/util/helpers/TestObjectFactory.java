@@ -28,6 +28,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import org.hibernate.Hibernate;
@@ -125,6 +126,7 @@ import org.mifos.application.util.helpers.EntityType;
 import org.mifos.application.util.helpers.YesNoFlag;
 import org.mifos.config.ClientRules;
 import org.mifos.config.FiscalCalendarRules;
+import org.mifos.config.Localization;
 import org.mifos.core.MifosRuntimeException;
 import org.mifos.customers.api.CustomerLevel;
 import org.mifos.customers.business.CustomerBO;
@@ -1417,10 +1419,24 @@ public class TestObjectFactory {
      */
     private static UserContext getUserContext() throws SystemException, ApplicationException {
         byte[] password = EncryptionService.getInstance().createEncryptedPassword("mifos");
-        PersonnelBO personnel = getPersonnel(PersonnelConstants.SYSTEM_USER);
-        personnel.setEncryptedPassword(password);
-        updateObject(personnel);
-        return personnel.login("mifos");
+        PersonnelBO user = getPersonnel(PersonnelConstants.SYSTEM_USER);
+        user.setEncryptedPassword(password);
+        updateObject(user);
+        user.login("mifos");
+        Locale preferredLocale = Localization.getInstance().getConfiguredLocale();
+        Short localeId = Localization.getInstance().getLocaleId();
+        UserContext userContext = new UserContext(preferredLocale, localeId);
+        userContext.setId(user.getPersonnelId());
+        userContext.setName(user.getDisplayName());
+        userContext.setLevel(user.getLevelEnum());
+        userContext.setRoles(user.getRoles());
+        userContext.setLastLogin(user.getLastLogin());
+        userContext.setPasswordChanged(user.getPasswordChanged());
+        userContext.setBranchId(user.getOffice().getOfficeId());
+        userContext.setBranchGlobalNum(user.getOffice().getGlobalOfficeNum());
+        userContext.setOfficeLevelId(user.getOffice().getLevel().getId());
+
+        return userContext;
     }
 
     public static void flushandCloseSession() {
