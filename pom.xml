@@ -57,6 +57,8 @@
         <module>savings</module>
         <module>acceptanceTests</module>
         <module>configuration</module>
+        <module>server</module>
+        <module>war</module>
     </modules>
 
 	<!-- Details about the m2e profiles
@@ -181,6 +183,11 @@
             <dependency>
                 <groupId>org.mifos</groupId>
                 <artifactId>mifos-configuration</artifactId>
+                <version>1.8-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mifos</groupId>
+                <artifactId>mifos-webapp</artifactId>
                 <version>1.8-SNAPSHOT</version>
             </dependency>
             <dependency>
