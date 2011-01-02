@@ -19,7 +19,6 @@
 	<classpathentry kind="src" path="serviceInterfaces/src/main/java"/>
 	<classpathentry kind="src" path="serviceInterfaces/src/test/java"/>
 	<classpathentry kind="src" path="api/src/main/java"/>
-	<classpathentry excluding="assembly/|java/|resources/|webapp/" including="sql/*" kind="src" path="application/src/main"/>
 	<classpathentry kind="src" path="application/src/main/java"/>
 	<classpathentry kind="src" path="application/src/main/resources"/>
 	<classpathentry kind="src" output="application/target/test-classes" path="application/src/test/java"/>
