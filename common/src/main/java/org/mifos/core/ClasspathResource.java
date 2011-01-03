@@ -91,11 +91,10 @@ public class ClasspathResource {
     public URL getUrl(String name) throws IOException {
         String resourcePath = this.path + name;
         URL url = ClasspathResource.class.getResource(resourcePath);
-        if (url != null) {
-        	return url;
-        } else {
+        if (url == null) {
         	throw new FileNotFoundException(resourcePath + " not found on Classpath");
         }
+    	return url;
     }
 
     public InputStream getAsStream(String name) throws IOException {
