@@ -964,6 +964,12 @@
                     <compile>false</compile>
                     <!-- makes output cleaner (less verbose) -->
                     <showSuccess>false</showSuccess>
+					<sources>
+						<directory>${basedir}/src/main/resources/META-INF/resources</directory>
+						<includes>
+							<include>**/*.jsp</include>
+						</includes>
+					</sources>
                 </configuration>
             </plugin>
             <plugin>
@@ -989,46 +995,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>2.0.2</version>
-                <configuration>
-                    <webResources>
-                        <!-- TODO: reporting seems to have been removed, can the next three be cleaned-up??? -->
-                        <resource>
-                            <directory>${basedir}/reporting/BirtReportDesign</directory>
-                            <targetPath>report</targetPath>
-                        </resource>
-                        <resource>
-                            <directory>${basedir}/reporting/BirtReportResource</directory>
-                            <targetPath>report/BirtReportResource</targetPath>
-                        </resource>
-                        <resource>
-                            <directory>${basedir}/reporting/BirtWebViewer-2_5_0</directory>
-                            <excludes>
-                                <exclude>*.jsp</exclude>
-                                <exclude>*.rptdesign</exclude>
-                                <exclude>**/web.xml</exclude>
-                            </excludes>
-                        </resource>
-                        <!-- TODO: How about using Maven WAR Overlay instead of this manual listing???
-                            @see http://maven.apache.org/plugins/maven-war-plugin/overlays.html -->
-                        <resource>
-                            <directory>${modules.root.dir}/userInterface/src/main/webapp</directory>
-                            <targetPath>.</targetPath>
-                        </resource>
-                        <resource>
-                            <directory>${modules.root.dir}/cashflow/src/main/webapp</directory>
-                            <targetPath>.</targetPath>
-                        </resource>
-                       <resource>
-                            <directory>${modules.root.dir}/questionnaire/src/main/webapp</directory>
-                            <targetPath>.</targetPath>
-                        </resource>
-                    </webResources>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.mifos.maven</groupId>
@@ -1091,27 +1057,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.2-beta-3</version>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <finalName>${current.release.name}</finalName>
-                    <appendAssemblyId>false</appendAssemblyId>
-                    <descriptors>
-                        <descriptor>src/main/assembly/release.xml</descriptor>
-                    </descriptors>
-                    <outputDirectory>target</outputDirectory>
-                    <workDirectory>target/assembly/work</workDirectory>
-                </configuration>
             </plugin>
         </plugins>
     </build>
