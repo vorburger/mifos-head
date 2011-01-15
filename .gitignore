@@ -1,13 +1,1 @@
-target
-*.log
-*.log.*
-test-output
-application/src/main/resources/sql/latest-schema_last.sql
-.idea/*
-*/.idea/*
-*.iml
-*.xmind
-docs/
-.resources
-/test-output
-.DS_Store
+!.gitignore
