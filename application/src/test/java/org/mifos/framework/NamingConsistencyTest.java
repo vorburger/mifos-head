@@ -42,7 +42,7 @@ public class NamingConsistencyTest {
      */
     @Test
     public void integrationTestsNameCheck() throws ClassNotFoundException, IOException {
-		for (Class<?> clazz : getClasses("org.mifos", "Test")) {
+        for (Class<?> clazz : getClasses("org.mifos", "Test")) {
             String clazzName = clazz.getName();
             if (!clazzName.endsWith("IntegrationTest") && !clazzName.endsWith("StrutsTest")) {
                 if (clazz.getSuperclass().equals(MifosIntegrationTestCase.class)
@@ -53,7 +53,8 @@ public class NamingConsistencyTest {
         }
     }
 
-    private static Iterable<Class<?>> getClasses(String packageName, String endsWith) throws ClassNotFoundException, IOException {
+    private static Iterable<Class<?>> getClasses(String packageName, String endsWith) throws ClassNotFoundException,
+            IOException {
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         assert classLoader != null;
         String path = packageName.replace('.', '/');
@@ -70,7 +71,8 @@ public class NamingConsistencyTest {
         return classes;
     }
 
-    private static void findClasses(File directory, String packageName, String endsWith, List<Class<?>> classes) throws ClassNotFoundException {
+    private static void findClasses(File directory, String packageName, String endsWith, List<Class<?>> classes)
+            throws ClassNotFoundException {
         if (!directory.exists()) {
             return;
         }
